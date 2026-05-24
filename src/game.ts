@@ -26,7 +26,8 @@ import { updateModeSelect,  renderModeSelect }                   from './state/m
 import { updateLevelSelect, renderLevelSelect }                  from './state/levelSelect';
 import { updateControls,    renderControls,
          updateHighScores,  renderHighScores,
-         updateCredits,     renderCredits }                       from './state/infoScreens';
+         updateCredits,     renderCredits,
+         updateStats,       renderStats }                          from './state/infoScreens';
 import { updatePlaying,     renderWorld }                         from './state/playing';
 import { updatePaused,      renderPause }                         from './state/pause';
 import { updateLevelClear,  renderLevelClear,
@@ -45,6 +46,12 @@ export interface LevelSummary {
   noMiss: number;
   total: number;
   best: number;
+  /** Trick count earned this run (CLUTCH, AIR POP, etc). Optional — when
+   *  zero, the summary card hides the row entirely. */
+  tricks: number;
+  /** True when this run's max combo exceeded the player's all-time best,
+   *  so the level-clear card can celebrate the moment. */
+  newComboBest: boolean;
 }
 
 /**
@@ -122,6 +129,19 @@ export class Game {
   usedRewardedContinue: boolean;
   lastDeathReason: DeathReason | null; // what killed the player this run (for the game-over screen)
   sessionFirstPopEmitted: boolean;     // emit `first_pop` analytics event exactly once per page session
+  // Multi-pop chain state: a sliding window that closes after ~180ms of no
+  // new pops. When the window closes with chainCount >= 2 we emit ONE
+  // DOUBLE/TRIPLE/MEGA POP label at the chain centroid — see playing.ts.
+  chainCount: number;
+  chainTimer: number;
+  chainCx: number;
+  chainCy: number;
+  /** Tricks earned this run (CLUTCH, AIR POP, etc). Surfaced in the
+   *  level-clear summary card so the player sees what they pulled off. */
+  runTricks: number;
+  /** Snapshot of lifetimeMaxCombo at the start of this level/run. After the
+   *  run we compare run maxCombo against this to surface NEW COMBO BEST! */
+  preRunMaxCombo: number;
 
   constructor() {
     const canvas = document.getElementById('game');
@@ -202,6 +222,12 @@ export class Game {
     this.usedRewardedContinue = false;
     this.lastDeathReason = null;
     this.sessionFirstPopEmitted = false;
+    this.chainCount = 0;
+    this.chainTimer = 0;
+    this.chainCx = 0;
+    this.chainCy = 0;
+    this.runTricks = 0;
+    this.preRunMaxCombo = 0;
   }
 
   // ============================ LIFECYCLE ============================
@@ -350,12 +376,26 @@ export class Game {
     this.crabs = (L.crabs || []).map(c => new Crab(c.x, (c as any).y ?? GROUND_Y, c.minX, c.maxX, c.speed));
     this.combo = 0; this.maxCombo = 0;
     this.shotsHit = 0; this.shotsFired = 0;
+    this.chainCount = 0; this.chainTimer = 0;
+    this.runTricks = 0;
+    this.preRunMaxCombo = Storage.data.lifetimeMaxCombo || 0;
     this.shake = 0; this.flash = 0; this.slowTime = 0; this.freezeTime = 0; this.magnetTime = 0; this.comboBoostTime = 0; this.hitPause = 0;
     this.bossDefeatedTimer = 0; this.lastTimerWarning = 0;
     this.player = new Player(W / 2, GROUND_Y);
     this.player2 = null;
     this.boss = L.boss ? new Boss() : null;
     this.state = State.PLAYING;
+
+    // Attach context to the CrazyGames feedback widget so any in-game user
+    // reports include the moment they were in when something broke. No-op if
+    // the SDK is absent.
+    Sdk.setGameContext({
+      mode: this.mode,
+      level: this.levelIndex + 1,
+      levelId: L.id,
+      theme: L.theme,
+      modifier: this.modifier ?? null,
+    });
   }
 
   // ============================ HELPERS ============================
@@ -395,15 +435,28 @@ export class Game {
   }
 
   saveRunBest() {
+    let beatSomePB = false;
     if (this.mode === 'score_attack' && this.score > Storage.data.bestScoreAttack) {
       Storage.data.bestScoreAttack = this.score;
       Storage.save();
+      beatSomePB = true;
     }
     if (this.mode === 'panic') {
-      if (this.panicWave - 1 > Storage.data.bestPanicWave) Storage.data.bestPanicWave = this.panicWave - 1;
-      if (this.score > Storage.data.bestPanicScore) Storage.data.bestPanicScore = this.score;
+      const survivedWave = this.panicWave - 1;
+      if (survivedWave > Storage.data.bestPanicWave) {
+        Storage.data.bestPanicWave = survivedWave;
+        beatSomePB = true;
+      }
+      if (this.score > Storage.data.bestPanicScore) {
+        Storage.data.bestPanicScore = this.score;
+        beatSomePB = true;
+      }
       Storage.save();
     }
+    // happytime() signals a player-satisfaction peak to CrazyGames. We fire
+    // it on genuine personal-best moments only — overusing it makes the
+    // signal meaningless and the platform discounts it.
+    if (beatSomePB) Sdk.happytime();
   }
 
   // Combat reactions live in src/systems/combat.ts; these methods are thin
@@ -446,6 +499,7 @@ export class Game {
       case State.HIGH_SCORES:  updateHighScores(this); break;
       case State.CONTROLS:     updateControls(this); break;
       case State.CREDITS:      updateCredits(this); break;
+      case State.STATS:        updateStats(this); break;
       case State.PLAYING:      updatePlaying(this, dt); break;
       case State.PAUSED:       updatePaused(this); break;
       case State.LEVEL_CLEAR:  updateLevelClear(this); break;
@@ -497,6 +551,7 @@ export class Game {
       case State.HIGH_SCORES:  renderHighScores(this); break;
       case State.CONTROLS:     renderControls(this); break;
       case State.CREDITS:      renderCredits(this); break;
+      case State.STATS:        renderStats(this); break;
       case State.DAILY_INTRO:  renderDailyIntro(this); break;
       case State.DAILY_RESULT: renderDailyResult(this); break;
       case State.PLAYING:

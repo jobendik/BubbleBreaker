@@ -11,6 +11,7 @@ import { AudioSys } from './audio';
 import { medalFor, recordDailyAttempt } from './daily';
 import { Platform as Sdk } from './platform';
 import { Storage } from './storage';
+import { markTitlesSeen, newlyEarnedTitles } from './titles';
 import type { Game } from '../game';
 
 /**
@@ -27,6 +28,55 @@ export function popBall(game: Game, ball: Ball, source: any) {
   const gained = Math.round(baseScore * comboMult * dailyMult);
   game.addScore(gained);
   game.floatingTexts.push(new FloatingText(ball.x, ball.y - 10, '+' + gained, game.combo >= 5 ? '#ffd60a' : '#fff'));
+
+  // ---------- Multi-pop chain bookkeeping ----------
+  // Every popBall call extends a short-lived window. When the window closes
+  // (in playing.ts) and >=2 pops landed, we emit ONE label at the centroid
+  // instead of N separate ones — that's the whole anti-clutter mechanism.
+  game.chainCount++;
+  game.chainTimer = 0.18;
+  // Running centroid so MEGA POPs render near the actual blast center.
+  game.chainCx = (game.chainCx * (game.chainCount - 1) + ball.x) / game.chainCount;
+  game.chainCy = (game.chainCy * (game.chainCount - 1) + ball.y) / game.chainCount;
+
+  // ---------- Trick chip detection (priority-ordered, max one per pop) ----------
+  // Each trick is a small bonus + small chip rendered at the ball's position.
+  // Suppress while the multi-pop chain is already running so we never stack
+  // a trick chip on top of an incoming chain label at the same location.
+  let trickLabel = '', trickBonus = 0, trickColor = '#9be7ff';
+  const isLastBall = game.balls.filter(b => !b.dead && b !== ball).length === 0;
+  const aliveTime = ball.age;
+  const timeSinceWall = ball.age - ball.lastWallTime;
+  const playerDist = game.player
+    ? Math.hypot(ball.x - game.player.x, ball.y - (game.player.y - 22))
+    : Infinity;
+  // CLUTCH: last ball on a timed level, taken with under 3 seconds left.
+  if (isLastBall && game.mode !== 'panic' && game.timer > 0 && game.timer < 3) {
+    trickLabel = 'CLUTCH!'; trickBonus = 150; trickColor = '#ff36c4';
+  } else if (playerDist < 90 && !ball.dead) {
+    // CLOSE CALL: ball within ~90px of player's head when popped. Real skill
+    // because the player chose not to retreat from a falling ball.
+    trickLabel = 'CLOSE CALL'; trickBonus = 75; trickColor = '#ff7f50';
+  } else if (ball.floorBounces === 0 && aliveTime > 0.4) {
+    // AIR POP: ball alive long enough to have hit the floor by physics, but
+    // the player got it first. Excludes freshly-spawned child balls.
+    trickLabel = 'AIR POP'; trickBonus = 60; trickColor = '#9be7ff';
+  } else if (timeSinceWall >= 0 && timeSinceWall < 0.35) {
+    // BANK SHOT: popped within 0.35s of the ball ricocheting off a wall.
+    trickLabel = 'BANK SHOT'; trickBonus = 50; trickColor = '#06d6a0';
+  }
+  if (trickLabel) {
+    const trickGained = Math.round(trickBonus * dailyMult);
+    game.addScore(trickGained);
+    game.runTricks++;
+    Storage.data.lifetimeTricks = (Storage.data.lifetimeTricks || 0) + 1;
+    // Small chip near the ball, offset upward so it doesn't overlap the +score.
+    game.floatingTexts.push(new FloatingText(ball.x, ball.y - 36, trickLabel, trickColor, 14));
+  }
+
+  // Lifetime pops counter — drives the Marksman title; debounced via the
+  // existing Storage.save() at combo-decay save points below.
+  Storage.data.lifetimePops = (Storage.data.lifetimePops || 0) + 1;
   const prevCombo = game.combo;
   game.combo++;
   game.maxCombo = Math.max(game.maxCombo, game.combo);
@@ -41,7 +91,7 @@ export function popBall(game: Game, ball: Ball, source: any) {
   game.comboDecay = 4;
   game.shotsHit++;
   if (source && 'didHit' in source) source.didHit = true;
-  AudioSys.pop(ball.size);
+  AudioSys.pop(ball.size, ball.type);
   // First-pop is the most important conversion signal: "the player got to
   // gameplay AND took a successful action." Emit at most once per session.
   if (!game.sessionFirstPopEmitted) {
@@ -115,6 +165,24 @@ export function popBall(game: Game, ball: Ball, source: any) {
     ball.dead = true;
   }
   game.hitPause = 0.04;
+
+  // Title-unlock detection. Most pops won't unlock anything — newlyEarnedTitles
+  // returns [] in steady state — so this is cheap. When something DOES unlock,
+  // show ONE toast (highest-priority new title) and mark all of them as seen so
+  // we never spam the screen with multiple chips for the same pop.
+  const newTitles = newlyEarnedTitles();
+  if (newTitles.length > 0) {
+    const t = newTitles[0]; // priority-ordered already
+    game.floatingTexts.push(new FloatingText(W/2, H/2 - 40, 'TITLE UNLOCKED', '#9be7ff', 16));
+    game.floatingTexts.push(new FloatingText(W/2, H/2 - 8,  t.label.toUpperCase(), '#ffd60a', 32));
+    // Lengthen this toast so it reads at any sensible glance.
+    const last = game.floatingTexts[game.floatingTexts.length - 1];
+    last.life = 2.0; last.maxLife = 2.0;
+    const second = game.floatingTexts[game.floatingTexts.length - 2];
+    second.life = 2.0; second.maxLife = 2.0;
+    AudioSys.firstPop(); // reuse the bigger-than-combo fanfare — it sounds right
+    markTitlesSeen(newTitles.map(n => n.id));
+  }
 }
 
 export function explodeProjectile(game: Game, projectile: Projectile, x: number, y: number) {
@@ -234,11 +302,18 @@ export function clearLevel(game: Game) {
     if (game.score > cur) { Storage.data.bestTour[L.id] = game.score; Storage.save(); }
   }
 
+  // NEW COMBO BEST detection: compare this run's combo apex against the
+  // snapshot taken at level start (preRunMaxCombo). The actual lifetime
+  // counter is bumped live in popBall as the combo grows, so we can't
+  // compare to that — preRunMaxCombo is the frozen "before" value.
+  const newComboBest = game.maxCombo > game.preRunMaxCombo && game.maxCombo >= 5;
   game.summary = {
     base: game.score - total,
     time: timeBonus, accuracy: accuracyBonus, combo: comboBonus, noMiss: noMissBonus,
     total: game.score,
     best: L ? (Storage.data.bestTour[L.id] || 0) : 0,
+    tricks: game.runTricks,
+    newComboBest,
   };
 
   game.state = State.LEVEL_CLEAR;

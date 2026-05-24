@@ -47,31 +47,55 @@ export function renderLevelClear(game: Game) {
   ctx.fillText('LEVEL CLEAR!', W/2, 130);
   const s = game.summary;
   if (s) {
-    const rows: [string, number][] = [
-      ['Base Score', s.base],
-      ['Time Bonus', s.time],
-      ['Accuracy Bonus', s.accuracy],
-      ['Combo Bonus', s.combo],
-      ['No-Miss Bonus', s.noMiss],
+    // Bonus rows. Tricks row only appears when the player actually pulled off
+    // CLUTCH / AIR POP / etc — otherwise the card stays at its original size.
+    const rows: [string, string][] = [
+      ['Base Score', '+' + s.base],
+      ['Time Bonus', '+' + s.time],
+      ['Accuracy Bonus', '+' + s.accuracy],
+      ['Combo Bonus', '+' + s.combo],
+      ['No-Miss Bonus', '+' + s.noMiss],
     ];
+    if (s.tricks > 0) rows.push(['Tricks', '×' + s.tricks]);
+    // Compress row spacing when the optional tricks row is present so the
+    // total + best lines still fit cleanly above the bottom hint.
+    const rowSpacing = rows.length > 5 ? 30 : 36;
+    const rowsTopY   = rows.length > 5 ? 190 : 200;
     ctx.font = '22px sans-serif';
     ctx.textAlign = 'left';
     for (let i = 0; i < rows.length; i++) {
-      ctx.fillStyle = '#fff';
-      ctx.fillText(rows[i][0], W/2 - 180, 200 + i * 36);
+      const isTricks = rows[i][0] === 'Tricks';
+      ctx.fillStyle = isTricks ? '#ff36c4' : '#fff';
+      ctx.fillText(rows[i][0], W/2 - 180, rowsTopY + i * rowSpacing);
       ctx.textAlign = 'right';
-      ctx.fillText('+' + rows[i][1], W/2 + 180, 200 + i * 36);
+      ctx.fillText(rows[i][1], W/2 + 180, rowsTopY + i * rowSpacing);
       ctx.textAlign = 'left';
     }
+    const totalY = rowsTopY + rows.length * rowSpacing + 20;
     ctx.font = 'bold 28px sans-serif';
     ctx.fillStyle = '#ffd60a';
-    ctx.fillText('TOTAL', W/2 - 180, 410);
+    ctx.fillText('TOTAL', W/2 - 180, totalY);
     ctx.textAlign = 'right';
-    ctx.fillText(s.total.toString(), W/2 + 180, 410);
+    ctx.fillText(s.total.toString(), W/2 + 180, totalY);
     ctx.font = '16px sans-serif';
     ctx.fillStyle = '#cfd6df';
     ctx.textAlign = 'center';
-    ctx.fillText('Best: ' + s.best, W/2, 440);
+    ctx.fillText('Best: ' + s.best, W/2, totalY + 30);
+    // NEW COMBO BEST! banner — pulses to draw the eye, sits below the
+    // best line so it doesn't compete with the total score.
+    if (s.newComboBest) {
+      const pulse = 1 + Math.sin(game.t * 6) * 0.04;
+      ctx.save();
+      ctx.translate(W/2, totalY + 60);
+      ctx.scale(pulse, pulse);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillStyle = '#ff36c4';
+      ctx.strokeStyle = '#0a1832';
+      ctx.lineWidth = 4;
+      ctx.strokeText('★  NEW COMBO BEST!  ★', 0, 0);
+      ctx.fillText('★  NEW COMBO BEST!  ★', 0, 0);
+      ctx.restore();
+    }
   }
   ctx.font = '16px sans-serif';
   ctx.fillStyle = game.awaitingAd ? '#ffd60a' : 'rgba(255,255,255,0.8)';

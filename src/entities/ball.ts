@@ -22,6 +22,17 @@ export class Ball {
   electricCharge: number;
   smokeTimer: number;
   squashTime: number;            // remaining seconds of squash-and-stretch after floor bounce
+  /** Total floor bounces since spawn. AIR POP trick checks this — a ball
+   *  popped without ever touching the floor is a satisfying skill shot. */
+  floorBounces: number;
+  /** Seconds since spawn. Used by AIR POP minimum-airtime rule so freshly
+   *  spawned balls (which haven't had a chance to touch the floor yet) don't
+   *  trivially qualify. */
+  age: number;
+  /** Time of the most recent wall bounce, in seconds since spawn. BANK SHOT
+   *  trick checks `age - lastWallTime < ~0.35`. Negative initial value means
+   *  "never bounced yet." */
+  lastWallTime: number;
   constructor(x, y, size, type: BallType = 'normal', vx = 0, vy = 0) {
     this.x = x; this.y = y;
     this.size = size;
@@ -37,6 +48,9 @@ export class Ball {
     this.electricCharge = rand(1.5, 3);              // electric ball discharge timer
     this.smokeTimer = 0;                             // smoke ball periodic puffs
     this.squashTime = 0;
+    this.floorBounces = 0;
+    this.age = 0;
+    this.lastWallTime = -10;
   }
 
   /** Mark for split. Children inherit position, opposite horizontal velocities. */
@@ -85,6 +99,7 @@ export class Ball {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.spin += this.vx * dt * 0.02;
+    this.age += dt;
     if (this.squashTime > 0) this.squashTime = Math.max(0, this.squashTime - dt);
 
     // Floor: arcade-consistent bounce (constant peak height)
@@ -92,6 +107,7 @@ export class Ball {
       this.y = GROUND_Y - this.r;
       this.vy = -BALL_BOUNCE[this.size];
       this.squashTime = 0.18;
+      this.floorBounces++;
       // Lava ball drips on bounce
       if (this.type === 'lava' && Math.random() < 0.6) {
         game.hazards.push(new Hazard('lava', this.x - 18, GROUND_Y - 4, 36, 8, 3.5));
@@ -103,8 +119,8 @@ export class Ball {
     }
 
     // Walls
-    if (this.x - this.r <= WALL_L) { this.x = WALL_L + this.r; this.vx = Math.abs(this.vx); }
-    else if (this.x + this.r >= WALL_R) { this.x = WALL_R - this.r; this.vx = -Math.abs(this.vx); }
+    if (this.x - this.r <= WALL_L) { this.x = WALL_L + this.r; this.vx = Math.abs(this.vx); this.lastWallTime = this.age; }
+    else if (this.x + this.r >= WALL_R) { this.x = WALL_R - this.r; this.vx = -Math.abs(this.vx); this.lastWallTime = this.age; }
 
     // Ceiling
     if (this.y - this.r <= CEILING_Y) {

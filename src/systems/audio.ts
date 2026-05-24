@@ -13,6 +13,11 @@ export const AudioSys = {
   ctx: null,
   master: null,
   muted: false,
+  /** Transient duck flag set when an ad is playing. Independent from `muted`
+   *  (the user's persisted preference) so the user's mute state is restored
+   *  cleanly when the ad finishes. CrazyGames requires the game to be silent
+   *  while ad audio plays — failing to do so is a top rejection cause. */
+  ducked: false,
   init() {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -26,6 +31,16 @@ export const AudioSys = {
     this.muted = !this.muted;
     Storage.data.muted = this.muted;
     Storage.save();
+  },
+  /** Suspend the audio context so no game audio leaks through an ad. */
+  duckForAd() {
+    this.ducked = true;
+    try { this.ctx?.suspend?.(); } catch { /* swallow */ }
+  },
+  /** Restore audio after an ad finishes (success or error). */
+  unduckForAd() {
+    this.ducked = false;
+    try { this.ctx?.resume?.(); } catch { /* swallow */ }
   },
   /** Generic envelope tone */
   beep(freq, dur, type = 'square', vol = 0.4, slide = 0) {
@@ -63,13 +78,45 @@ export const AudioSys = {
   },
   shoot()      { this.beep(880, 0.06, 'square', 0.18, -400); },
   /** Pop sound — pitch drops as ball size increases for tactile size feedback.
-   *  size 0 (tiny) → bright "tink", size 4 (huge) → deep "thunk". */
-  pop(size: number = 2) {
+   *  Optional `type` overlays a small typed flourish on top of the base pop:
+   *    electric → high zap, lava → low sizzle (noise burst), smoke → soft whoosh,
+   *    armored → metallic clank, bonus → chime, explosive → boom-tail.
+   *  Variants are quieter than the base pop so the audio mix stays balanced and
+   *  the dominant feedback is still the size-pitched core pop. */
+  pop(size: number = 2, type: string = 'normal') {
     const s = Math.max(0, Math.min(4, size));
     const lo = 760 - s * 90;        // 760, 670, 580, 490, 400
     const hi = lo + 220;
     this.beep(lo, 0.08 + s * 0.012, 'triangle', 0.28 + s * 0.035, -180 - s * 30);
     this.beep(hi, 0.05, 'sine', 0.14, 0);
+    switch (type) {
+      case 'electric':
+        this.beep(2200, 0.06, 'square', 0.16, -1400);
+        break;
+      case 'lava':
+        this.noise(0.18, 1200, 0.18);
+        this.beep(180, 0.18, 'sawtooth', 0.18, -60);
+        break;
+      case 'smoke':
+        this.noise(0.22, 600, 0.16);
+        break;
+      case 'armored':
+        this.beep(1100, 0.05, 'square', 0.22, 0);
+        this.beep(540, 0.04, 'square', 0.14, 0);
+        break;
+      case 'bonus':
+        // Bright bell-like chime: two near-octave triangles for a sparkle.
+        this.beep(1320, 0.16, 'triangle', 0.22, 0);
+        setTimeout(() => this.beep(1760, 0.18, 'triangle', 0.18, 0), 50);
+        break;
+      case 'explosive':
+        // Quick tail to bridge into the explode() call site without overlap.
+        this.beep(120, 0.18, 'sawtooth', 0.22, -40);
+        break;
+      case 'sludge':
+        this.noise(0.16, 350, 0.18);
+        break;
+    }
   },
   split()      { this.beep(380, 0.1, 'sawtooth', 0.2, 120); },
   /** Combo-milestone fanfare: short ascending arpeggio whose pitch rises with the

@@ -11,6 +11,7 @@ import type { Game } from '../game';
 const SECONDARY = [
   { key: 'levels',   label: 'Levels' },
   { key: 'modes',    label: 'Modes' },
+  { key: 'stats',    label: 'Stats' },
   { key: 'controls', label: 'Controls' },
   { key: 'credits',  label: 'Credits' },
 ] as const;
@@ -54,7 +55,9 @@ export function getMainMenuLayout() {
   const dailyW = 340, dailyH = 60;
   const dailyX = W/2 - dailyW/2;
   const dailyY = playY + playH + 16;
-  const secW = 160, secH = 44, secGap = 12;
+  // Five secondary buttons — slightly narrower than the four-button layout
+  // so the full row still fits the 960-wide canvas with comfortable margins.
+  const secW = 140, secH = 44, secGap = 10;
   const secCount = SECONDARY.length;
   const secTotal = secCount * secW + (secCount - 1) * secGap;
   const secY = dailyY + dailyH + 18;
@@ -76,6 +79,7 @@ export function getResumeLevel(game: Game) {
 function openMenuAction(game: Game, key: string) {
   if (key === 'levels')        game.state = State.LEVEL_SELECT;
   else if (key === 'modes')    game.state = State.MODE_SELECT;
+  else if (key === 'stats')    game.state = State.STATS;
   else if (key === 'controls') game.state = State.CONTROLS;
   else if (key === 'credits')  game.state = State.CREDITS;
   else if (key === 'highscores') game.state = State.HIGH_SCORES;

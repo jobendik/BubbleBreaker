@@ -66,6 +66,48 @@ export function updatePlaying(game: Game, dt: number) {
     game.comboDecay = 0.5;
   }
 
+  // Lifetime play-time accumulator. The save is debounced via cloud writes
+  // already (Storage.save), so we don't persist on every tick — the buffer
+  // flushes on level clear / death where Storage.save() is called anyway.
+  Storage.data.lifetimePlayMs = (Storage.data.lifetimePlayMs || 0) + dt * 1000;
+
+  // Multi-pop chain window: closes when no new pops have arrived for 180ms.
+  // We emit one consolidated DOUBLE/TRIPLE/MEGA POP label at the chain
+  // centroid — never one per ball — so explosions and laser sweeps read as
+  // ONE big moment, not a screen full of confetti.
+  if (game.chainTimer > 0) {
+    game.chainTimer -= dt;
+    if (game.chainTimer <= 0 && game.chainCount >= 2) {
+      const n = game.chainCount;
+      let label = '', bonus = 0, color = '#ffd60a', size = 32;
+      if (n === 2) { label = 'DOUBLE POP'; bonus = 100; color = '#9be7ff'; size = 28; }
+      else if (n === 3) { label = 'TRIPLE POP'; bonus = 250; color = '#ffd60a'; size = 32; }
+      else if (n === 4) { label = 'QUAD POP'; bonus = 500; color = '#ff7f50'; size = 36; }
+      else if (n <= 7)  { label = 'MEGA POP'; bonus = 1000; color = '#ff36c4'; size = 44; }
+      else              { label = 'ULTRA POP'; bonus = 2000; color = '#ff36c4'; size = 52; }
+      const dailyMult = game.modifier === 'double_score' ? 2 : 1;
+      const gained = bonus * dailyMult;
+      game.addScore(gained);
+      // Big label at the chain centroid, plus a small "+score ×N" subtitle.
+      game.floatingTexts.push(new FloatingText(game.chainCx, game.chainCy - 18, label, color, size));
+      game.floatingTexts.push(new FloatingText(game.chainCx, game.chainCy + 10, '+' + gained + '  ×' + n, '#fff', 16));
+      // Light shockwave to draw the eye, but no screen flash/shake (those are
+      // reserved for combo milestones — keeping the hierarchy clear).
+      game.shockwaves.push(new Shockwave(game.chainCx, game.chainCy, 80 + n * 18, color, 0.4));
+      // Lifetime stats for the Detonator title and post-game brag.
+      if (n > (Storage.data.bestMultiPop || 0)) {
+        Storage.data.bestMultiPop = n;
+      }
+      Storage.save();
+    }
+    if (game.chainTimer <= 0) {
+      game.chainCount = 0;
+      game.chainCx = 0;
+      game.chainCy = 0;
+      game.chainTimer = 0;
+    }
+  }
+
   // Intro timer — any movement, shoot, or pointer press dismisses early.
   if (game.introTimer > 0) {
     const before = game.introTimer;
@@ -190,6 +232,42 @@ export function renderWorld(game: Game) {
   }
 
   renderHUD(game);
+
+  // First-ever-session control hint — a calm pill above the player showing
+  // the basic controls. Shown only until the player has popped their very
+  // first ball ever (firstPopCelebrated is a sticky one-way flag in Storage).
+  // Fades out smoothly after the first pop so it doesn't linger.
+  if (!Storage.data.firstPopCelebrated && game.state === State.PLAYING && game.mode === 'tour' && game.levelIndex === 0) {
+    const fadeFrom = 1.0;   // full opacity for the first second
+    const hangSecs = 6.0;   // fully visible for this long
+    const fadeSecs = 1.5;   // then fade out over this
+    const tIn = Math.min(1, game.t / 0.4);
+    const tOut = Math.max(0, Math.min(1, (game.t - hangSecs) / fadeSecs));
+    const alpha = fadeFrom * tIn * (1 - tOut);
+    if (alpha > 0.01) {
+      const w = 360, h = 56;
+      const x = W/2 - w/2, y = 96;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(10,24,50,0.78)';
+      roundRect(ctx, x, y, w, h, 10, true, false);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,214,10,0.7)';
+      roundRect(ctx, x, y, w, h, 10, false, true);
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#9be7ff';
+      ctx.textAlign = 'center';
+      ctx.fillText('HOW TO PLAY', W/2, y + 16);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillStyle = '#ffd60a';
+      if (isTouchDevice) {
+        ctx.fillText('TAP ◀ ▶ TO MOVE   •   TAP FIRE TO POP', W/2, y + 40);
+      } else {
+        ctx.fillText('A / D or ← →  MOVE   •   SPACE / ↑  FIRE', W/2, y + 40);
+      }
+      ctx.restore();
+    }
+  }
 
   // Intro banner — slides down from above on appearance, fades on dismiss.
   if (game.introTimer > 0 && game.introText) {

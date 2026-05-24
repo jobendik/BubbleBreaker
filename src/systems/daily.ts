@@ -1,5 +1,6 @@
 import { DAILY_MODIFIERS, type DailyModifierId } from '../constants';
 import { LEVELS } from '../data/levels';
+import { Platform as Sdk } from './platform';
 import { Storage, type MedalTier } from './storage';
 
 /** Today's UTC date in YYYY-MM-DD form. Stable across timezones so all players
@@ -113,6 +114,17 @@ export function welcomeBackMessage(): { title: string; subtitle: string } | null
  *  against the previous lastSessionDate (before we update it). */
 let _welcomeBackCache: ReturnType<typeof welcomeBackMessage> | null = null;
 
+/** Username pulled from the CrazyGames SDK after init. When set, the menu
+ *  uses it to personalize the welcome-back banner ("Welcome back, Jo!"). */
+let _username: string | null = null;
+export function setUsername(name: string | null) {
+  _username = name && name.trim() ? name.trim() : null;
+  if (_username && _welcomeBackCache) {
+    _welcomeBackCache = { ..._welcomeBackCache, title: 'Welcome back, ' + _username + '!' };
+  }
+}
+export function getUsername() { return _username; }
+
 /** Call once at boot — captures any welcome-back greeting, then marks today
  *  as the most recent session so tomorrow's visit detects "1 day ago". */
 export function captureWelcomeBack() {
@@ -131,16 +143,28 @@ export function dismissWelcomeBack() { _welcomeBackCache = null; }
 export function recordDailyAttempt(score: number) {
   const today = todayUTC();
   const last = Storage.data.dailyLastPlayed;
+  const prevStreak = Storage.data.dailyStreak || 0;
+  let streakMilestone = false;
   if (last !== today) {
     // First attempt today: bump or reset streak.
     if (last === yesterdayUTC()) {
-      Storage.data.dailyStreak = (Storage.data.dailyStreak || 0) + 1;
+      Storage.data.dailyStreak = prevStreak + 1;
     } else {
       Storage.data.dailyStreak = 1;
     }
     Storage.data.dailyLastPlayed = today;
+    // 3 and 7-day streaks are tangible status moments. Fire happytime() to
+    // tell CrazyGames "this player just had a high-satisfaction moment."
+    const newStreak = Storage.data.dailyStreak;
+    if (newStreak !== prevStreak && (newStreak === 3 || newStreak === 7 || (newStreak > 7 && newStreak % 7 === 0))) {
+      streakMilestone = true;
+    }
   }
   const prev = Storage.data.dailyBest[today] || 0;
-  if (score > prev) Storage.data.dailyBest[today] = score;
+  const newDailyPB = score > prev;
+  if (newDailyPB) Storage.data.dailyBest[today] = score;
   Storage.save();
+  // Daily PB or streak milestone -> peak signal. Daily wins are the kind of
+  // bite-sized success CrazyGames specifically rewards in its algorithm.
+  if (newDailyPB || streakMilestone) Sdk.happytime();
 }

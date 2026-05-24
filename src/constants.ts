@@ -43,6 +43,7 @@ export const State = {
   HIGH_SCORES: 'high_scores',
   CONTROLS: 'controls',
   CREDITS: 'credits',
+  STATS: 'stats',
   PLAYING: 'playing',
   PAUSED: 'paused',
   LEVEL_CLEAR: 'level_clear',

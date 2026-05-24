@@ -27,6 +27,9 @@ export class Player {
   respawnTimer: number;
   bob: number;
   walkAnim: number;
+  /** Seconds remaining where weapons are disabled (after touching a Bird /
+   *  Ball-Fish). 0 means weapons are normal. */
+  weaponDisabled: number;
   constructor(x, y, isP2 = false) {
     this.x = x; this.y = y;
     this.w = 30; this.h = 46;
@@ -47,6 +50,7 @@ export class Player {
     this.invuln = 0;              // brief i-frames after respawn
     this.dead = false;
     this.respawnTimer = 0;
+    this.weaponDisabled = 0;
 
     // Anim
     this.bob = 0;
@@ -106,6 +110,7 @@ export class Player {
     // Weapon timers
     this.shotCooldown -= dt;
     this.invuln -= dt;
+    if (this.weaponDisabled > 0) this.weaponDisabled = Math.max(0, this.weaponDisabled - dt);
     if (this.weaponTime > 0) {
       this.weaponTime -= dt;
       if (this.weaponTime <= 0 && this.weapon !== 'harpoon') {
@@ -113,9 +118,9 @@ export class Player {
       }
     }
 
-    // Shooting
+    // Shooting (blocked entirely while a Bird/Ball-Fish has disabled weapons)
     this.flameActive = false;
-    if (shoot) this.tryShoot(game);
+    if (shoot && this.weaponDisabled <= 0) this.tryShoot(game);
   }
 
   tryShoot(game) {
@@ -136,6 +141,40 @@ export class Player {
         this.shotCooldown = 0.05;
         game.shotsFired++;
         AudioSys.shoot();
+      }
+    } else if (this.weapon === 'triple') {
+      // Pang! 3 Triple Harpoon — three concurrent harpoons in flight.
+      const live = game.projectiles.filter(p => p.owner === this && p.type === 'harpoon' && !p.dead).length;
+      if (live < 3 && this.shotCooldown <= 0) {
+        game.projectiles.push(new Projectile(m.x, m.y, 'harpoon', this));
+        this.shotCooldown = 0.04;
+        game.shotsFired++;
+        AudioSys.shoot();
+      }
+    } else if (this.weapon === 'powerwire') {
+      // Power Wire — fires a grapple that anchors to the ceiling. Two grapples
+      // may coexist on screen at once (the Double Power Wire upgrade is the
+      // default tuning for this weapon, matching its Pang utility role).
+      const live = game.projectiles.filter(p => p.owner === this && p.type === 'grapple' && !p.dead).length;
+      if (live < 2 && this.shotCooldown <= 0) {
+        game.projectiles.push(new Projectile(m.x, m.y, 'grapple', this));
+        this.shotCooldown = 0.18;
+        game.shotsFired++;
+        AudioSys.shoot();
+        this.weaponAmmo--;
+        if (this.weaponAmmo <= 0) this.setWeapon('harpoon');
+      }
+    } else if (this.weapon === 'diagonal') {
+      // Sheila the Thief: paired 45-degree harpoons. Each press fires both.
+      if (this.shotCooldown <= 0 && this.weaponAmmo > 0) {
+        const k = Math.SQRT1_2; // ≈ 0.707
+        game.projectiles.push(new Projectile(m.x, m.y, 'diagonal', this, -k, -k));
+        game.projectiles.push(new Projectile(m.x, m.y, 'diagonal', this,  k, -k));
+        this.shotCooldown = 0.22;
+        this.weaponAmmo--;
+        game.shotsFired += 2;
+        AudioSys.shoot();
+        if (this.weaponAmmo <= 0) this.setWeapon('harpoon');
       }
     } else if (this.weapon === 'machinegun') {
       if (this.shotCooldown <= 0 && this.weaponAmmo > 0) {
@@ -204,6 +243,9 @@ export class Player {
     switch (name) {
       case 'harpoon':    this.weaponTime = 0; this.weaponAmmo = 0; break;
       case 'double':     this.weaponTime = 12; break;
+      case 'triple':     this.weaponTime = 10; break;             // top-tier — short uptime
+      case 'powerwire':  this.weaponAmmo = 6;  break;             // fixed grapples per pickup
+      case 'diagonal':   this.weaponAmmo = 12; break;             // 12 paired bolts
       case 'machinegun': this.weaponAmmo = 60; break;
       case 'laser':      this.weaponAmmo = 8;  break;
       case 'flame':      this.weaponAmmo = 90; break;
@@ -284,6 +326,28 @@ export class Player {
       ctx.beginPath();
       ctx.arc(x, y - 22, 26, 0, Math.PI * 2);
       ctx.stroke();
+    }
+
+    // Bird-stun: spinning star indicator above head while weapons are locked.
+    // Telegraphs to the player exactly why their shots aren't coming out.
+    if (this.weaponDisabled > 0) {
+      const t = performance.now() / 200;
+      ctx.save();
+      ctx.translate(x, y - 56);
+      ctx.rotate(t);
+      ctx.fillStyle = '#ffd60a';
+      ctx.strokeStyle = '#5b3500';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const ang = (i / 5) * Math.PI * 2;
+        const r = i % 2 === 0 ? 7 : 3;
+        ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
 
     // Flame muzzle visual (additional flair beyond the projectiles)

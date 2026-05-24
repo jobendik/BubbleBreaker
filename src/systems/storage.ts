@@ -26,6 +26,11 @@ export interface SaveData {
   /** Comma-joined ids of titles we have already shown the unlock toast for.
    *  Prevents re-firing the toast on every session for titles already known. */
   seenTitleIds: string;
+  /** Highest Boss Rush completion score, persisted across sessions so the
+   *  player has a tangible "beat my best" to chase in the mode. */
+  bestBossRush: number;
+  /** Highest number of bosses defeated in a single Boss Rush run. */
+  bestBossRushCount: number;
 }
 
 const KEY_V1 = 'bba_save_v1';
@@ -53,6 +58,8 @@ function createDefaultSave(): SaveData {
     lifetimeTricks: 0,
     lifetimePlayMs: 0,
     seenTitleIds: '',
+    bestBossRush: 0,
+    bestBossRushCount: 0,
   };
 }
 
@@ -88,6 +95,8 @@ function mergeProgress(local: SaveData, cloud: Partial<SaveData>): SaveData {
   if (cloud.bestMultiPop != null)    out.bestMultiPop    = Math.max(local.bestMultiPop || 0,    cloud.bestMultiPop);
   if (cloud.lifetimeTricks != null)  out.lifetimeTricks  = Math.max(local.lifetimeTricks || 0,  cloud.lifetimeTricks);
   if (cloud.lifetimePlayMs != null)  out.lifetimePlayMs  = Math.max(local.lifetimePlayMs || 0,  cloud.lifetimePlayMs);
+  if (cloud.bestBossRush != null)    out.bestBossRush    = Math.max(local.bestBossRush || 0,    cloud.bestBossRush);
+  if (cloud.bestBossRushCount != null) out.bestBossRushCount = Math.max(local.bestBossRushCount || 0, cloud.bestBossRushCount);
   // Title-seen set: union, so the unlock toast doesn't re-fire on a new device
   // for titles the player has already seen elsewhere.
   if (cloud.seenTitleIds) {

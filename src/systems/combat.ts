@@ -156,6 +156,49 @@ export function popBall(game: Game, ball: Ball, source: any) {
     }
   }
 
+  // ---------- Panic-mode Star/Flash specials ----------
+  // Star Bubbles are popped instead of split. The face on the bubble dictates
+  // the effect: Clock → universal freeze (~6 s), Star → full-screen wipe with
+  // a big score grant. Mirrors Pang Panic Mode's Star Bubble exactly.
+  if (ball.type === 'star') {
+    if (ball.starMode === 0) {
+      game.freezeTime = Math.max(game.freezeTime, 6);
+      game.floatingTexts.push(new FloatingText(ball.x, ball.y - 30, 'TIME FREEZE!', '#9be7ff', 22));
+      game.shockwaves.push(new Shockwave(ball.x, ball.y, 200, '#9be7ff', 0.45));
+    } else {
+      // Star face: clear the screen and dump the points into the Panic gauge.
+      let wiped = 0;
+      for (const b of game.balls) {
+        if (b !== ball && !b.dead) { wiped++; b.dead = true; }
+      }
+      const sweep = wiped * 100;
+      game.addScore(sweep);
+      game.panicGauge = Math.min(game.panicGaugeMax, game.panicGauge + wiped);
+      game.floatingTexts.push(new FloatingText(ball.x, ball.y - 30, 'SCREEN CLEAR! +' + sweep, '#ffd60a', 22));
+      game.flash = 0.6;
+      game.shake = 24;
+      game.shockwaves.push(new Shockwave(W/2, H/2, 380, '#ffd60a', 0.7));
+    }
+    ball.dead = true;
+    game.hitPause = 0.06;
+    return;
+  }
+  // Flashing micro-ball: popping the tagged size-0 child grants a brief
+  // arcade-style freeze. Score is the normal pop reward + small flash bonus.
+  if (ball.flashing && ball.size === 0) {
+    const freeze = 2.2;
+    game.freezeTime = Math.max(game.freezeTime, freeze);
+    game.addScore(300);
+    game.floatingTexts.push(new FloatingText(ball.x, ball.y - 18, 'TIME STOP!', '#9be7ff', 18));
+    game.shockwaves.push(new Shockwave(ball.x, ball.y, 100, '#9be7ff', 0.4));
+  }
+  // Panic gauge: each pop fills the Rainbow Gauge a notch. Wave advances
+  // mid-fight when the gauge is full (in addition to the existing "screen
+  // empty" rule), matching Pang's continuous-wave Panic experience.
+  if (game.mode === 'panic') {
+    game.panicGauge = Math.min(game.panicGaugeMax, game.panicGauge + 1);
+  }
+
   const children = ball.hit(game, source);
   if (children) {
     if (children.length > 0) {
@@ -257,8 +300,11 @@ export function killPlayer(game: Game, player: Player, reason: DeathReason = 'un
     game.state = State.GAME_OVER;
     game.saveRunBest();
   } else if (game.player2) {
-    player.respawnTimer = 1.8;
-    game.floatingTexts.push(new FloatingText(player.x, player.y - 42, player.isP2 ? 'P2 DOWN' : 'P1 DOWN', '#ff4d6d', 20));
+    // Pang Adventures revive window: 10 seconds for the partner to walk over
+    // the downed player to bring them back. After that, normal respawn.
+    player.respawnTimer = 10.0;
+    game.floatingTexts.push(new FloatingText(player.x, player.y - 42,
+      (player.isP2 ? 'P2 DOWN' : 'P1 DOWN') + ' — REVIVE!', '#ff4d6d', 20));
   } else {
     game.state = State.PLAYER_DEAD;
     game.hitPause = 1.2;

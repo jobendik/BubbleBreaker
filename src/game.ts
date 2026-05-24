@@ -3,6 +3,7 @@ import { LEVELS } from './data/levels';
 import { Ball } from './entities/ball';
 import { Boss } from './entities/boss';
 import { Crab } from './entities/crab';
+import { Creature, type CreatureKind } from './entities/creature';
 import { Destructible } from './entities/destructible';
 import { Hazard } from './entities/hazard';
 import { Particle, FloatingText, Shockwave, SmokeCloud } from './entities/particle';
@@ -82,7 +83,20 @@ export class Game {
   smokeClouds: SmokeCloud[];
   floatingTexts: FloatingText[];
   crabs: Crab[];
+  creatures: Creature[];
   boss: Boss | null;
+  /** Boss Rush queue (boss-level indices remaining). When non-empty we cycle
+   *  through and progress to victory when the queue empties. */
+  bossRushQueue: number[];
+  /** Boss Rush running tally — bosses defeated this run. */
+  bossRushCount: number;
+  /** Panic-mode endless-survival progress bar (Pang's Rainbow Gauge). Fills
+   *  with each pop; on overflow we award a wave-clear bonus and bump up. */
+  panicGauge: number;
+  panicGaugeMax: number;
+  /** Panic-mode Star Bubble countdown — the bubble periodically drops on its own
+   *  even if no balls remain, so the player gets the screen-clear option. */
+  panicStarTimer: number;
   score: number;
   lives: number;
   timer: number;
@@ -171,7 +185,13 @@ export class Game {
     this.smokeClouds = [];
     this.floatingTexts = [];
     this.crabs = [];
+    this.creatures = [];
     this.boss = null;
+    this.bossRushQueue = [];
+    this.bossRushCount = 0;
+    this.panicGauge = 0;
+    this.panicGaugeMax = 12;
+    this.panicStarTimer = 0;
 
     this.score = 0;
     this.lives = 3;
@@ -283,6 +303,27 @@ export class Game {
     this.loadLevel(this.daily.levelIndex);
   }
 
+  startBossRush() {
+    // The Boss Rush queues every boss-flagged level in the game (currently just
+    // Commander RIFT, but the loop is forward-compatible with future bosses).
+    const bossIndices: number[] = [];
+    for (let i = 0; i < LEVELS.length; i++) if (LEVELS[i].boss) bossIndices.push(i);
+    // Repeat the boss roster so the run has at least 3 fights — gives the mode
+    // arcade pacing instead of a single encounter that ends instantly.
+    while (bossIndices.length < 3) bossIndices.push(...bossIndices);
+    this.mode = 'boss_rush';
+    this.modifier = null;
+    this.lives = 3;
+    this.score = 0;
+    this._resetRunFlags();
+    this.bossRushQueue = bossIndices.slice(1);
+    this.bossRushCount = 0;
+    this.loadLevel(bossIndices[0]);
+    this.introTitle = 'BOSS RUSH';
+    this.introText = 'Defeat every boss in sequence. No retries between fights.';
+    this.introTimer = 4;
+  }
+
   startPanic() {
     this.mode = 'panic';
     this.modifier = null;
@@ -297,6 +338,9 @@ export class Game {
     this.balls = []; this.projectiles = []; this.pickups = [];
     this.platforms = []; this.destructibles = []; this.hazards = [];
     this.particles = []; this.shockwaves = []; this.smokeClouds = []; this.floatingTexts = []; this.crabs = [];
+    this.creatures = [];
+    this.panicGauge = 0;
+    this.panicStarTimer = 22;
     this.player = new Player(W / 2, GROUND_Y - 0);
     this.player2 = null;
     this.boss = null;
@@ -358,11 +402,20 @@ export class Game {
     const bigBubbles = this.modifier === 'big_bubbles';
     const noPickups  = this.modifier === 'no_pickups';
 
+    // First-ever-session Level-1 onboarding: slow horizontal velocity by 35%
+    // on the absolute first run so a brand-new player has time to read the
+    // ball, move under it, and shoot. After the very first pop the player has
+    // celebrated, this branch is permanently inactive (sticky save flag).
+    const firstEver = !Storage.data.firstPopCelebrated
+      && this.mode === 'tour'
+      && index === 0;
+
     this.balls = L.balls.map(b => new Ball(
       b.x, b.y,
       bigBubbles ? Math.min(4, (b.size ?? 2) + 1) : b.size,
       b.type || 'normal',
-      b.vx || 0, b.vy || 0,
+      firstEver ? (b.vx || 0) * 0.65 : (b.vx || 0),
+      b.vy || 0,
     ));
     this.platforms = (L.platforms || []).map(p => new Platform(p.x, p.y, p.w, p.h, p));
     this.destructibles = (L.destructibles || []).map(d => new Destructible(d.x, d.y, d.w, d.h, noPickups ? null : d.contains));
@@ -374,6 +427,10 @@ export class Game {
     this.smokeClouds = [];
     this.floatingTexts = [];
     this.crabs = (L.crabs || []).map(c => new Crab(c.x, (c as any).y ?? GROUND_Y, c.minX, c.maxX, c.speed));
+    // Creatures spawn on a per-level basis (data field) or are added at
+    // runtime by Panic / Boss Rush spawners.
+    this.creatures = ((L as any).creatures || []).map((c: any) =>
+      new Creature(c.kind as CreatureKind, c.x, c.y ?? (c.kind === 'dragon' ? GROUND_Y : 180), c.dir ?? 1));
     this.combo = 0; this.maxCombo = 0;
     this.shotsHit = 0; this.shotsFired = 0;
     this.chainCount = 0; this.chainTimer = 0;
@@ -449,6 +506,17 @@ export class Game {
       }
       if (this.score > Storage.data.bestPanicScore) {
         Storage.data.bestPanicScore = this.score;
+        beatSomePB = true;
+      }
+      Storage.save();
+    }
+    if (this.mode === 'boss_rush') {
+      if (this.score > (Storage.data.bestBossRush || 0)) {
+        Storage.data.bestBossRush = this.score;
+        beatSomePB = true;
+      }
+      if (this.bossRushCount > (Storage.data.bestBossRushCount || 0)) {
+        Storage.data.bestBossRushCount = this.bossRushCount;
         beatSomePB = true;
       }
       Storage.save();

@@ -5,7 +5,12 @@ import type { Player } from './player';
 import type { Game } from '../game';
 
 // ============================ PROJECTILE ============================
-export type ProjectileType = 'harpoon' | 'bullet' | 'pellet' | 'laser' | 'flame' | 'shuriken' | 'bomb';
+// 'grapple'  — Power Wire: once the tip reaches the ceiling, the wire anchors
+//              and persists until struck by a ball (a passive defensive trap).
+// 'diagonal' — Sheila-style 45-degree harpoon. Behaves like a linear projectile,
+//              not an anchored wire, so it can hit balls without standing under them.
+export type ProjectileType = 'harpoon' | 'bullet' | 'pellet' | 'laser' | 'flame'
+  | 'shuriken' | 'bomb' | 'grapple' | 'diagonal';
 
 export class Projectile {
   x: number;
@@ -27,7 +32,18 @@ export class Projectile {
   spin: number;
   bounces: number;
   explosionRadius: number;
-  constructor(x, y, type, owner) {
+  /** For 'grapple' (Power Wire) — true once the tip has reached the ceiling
+   *  and the wire is locked in place. Once anchored, the projectile waits
+   *  passively for a ball to collide with it instead of advancing. */
+  anchored: boolean;
+  /** Persistence timer used while anchored. Caps the trap so the screen
+   *  doesn't fill with grapples; 0 means "live indefinitely until struck." */
+  anchorLife: number;
+  /** Diagonal-harpoon angle from vertical, used so we can fire two mirrored
+   *  shots from a single weapon and render the cable along the actual path. */
+  dirX: number;
+  dirY: number;
+  constructor(x, y, type, owner, dirX = 0, dirY = -1) {
     this.x = x; this.y = y; this.type = type; this.owner = owner;
     this.dead = false;
     this.didHit = false;
@@ -35,6 +51,10 @@ export class Projectile {
     this.spin = 0;
     this.bounces = 0;
     this.explosionRadius = 0;
+    this.anchored = false;
+    this.anchorLife = 0;
+    this.dirX = dirX;
+    this.dirY = dirY;
 
     if (type === 'harpoon') {
       this.startY = y;
@@ -69,6 +89,22 @@ export class Projectile {
       this.r = 8;
       this.life = 2.4;
       this.explosionRadius = 92;
+    } else if (type === 'grapple') {
+      // Behaves like a harpoon while travelling; once tip hits the ceiling we
+      // flip `anchored = true` and the wire stays put until a ball hits it.
+      this.startY = y;
+      this.tipY = y;
+      this.speed = 1050;
+      this.w = 6;
+      this.anchorLife = 14;             // hard cap: 14s anchored before fading
+    } else if (this.type === 'diagonal') {
+      // Linear travelling shot along (dirX, dirY). Diagonal harpoons are short
+      // bolts rather than ceiling-anchored cables.
+      this.w = 6;
+      this.h = 12;
+      this.speed = 980;
+      this.vx = dirX * this.speed;
+      this.vy = dirY * this.speed;
     }
   }
 
@@ -120,6 +156,34 @@ export class Projectile {
       this.vy += 520 * dt;
       if (this.y <= CEILING_Y || this.life <= 0) game.explodeProjectile(this, this.x, this.y);
       else if (this.y > game.canvas.height) this.dead = true;
+    } else if (this.type === 'grapple') {
+      if (!this.anchored) {
+        this.tipY -= this.speed * dt;
+        if (this.tipY <= CEILING_Y) {
+          this.tipY = CEILING_Y;
+          this.anchored = true;
+        }
+        for (const p of game.platforms) {
+          if (p.blocksShots && this.x >= p.x && this.x <= p.x + p.w
+              && this.tipY <= p.y + p.h && this.tipY >= p.y) {
+            this.tipY = p.y + p.h;
+            this.anchored = true;
+            break;
+          }
+        }
+      } else {
+        // Persistence countdown while anchored. Fades visually in draw().
+        this.anchorLife -= dt;
+        if (this.anchorLife <= 0) this.dead = true;
+      }
+    } else if (this.type === 'diagonal') {
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      // Light gravity so the bolt arcs slightly — sells the "thrown" feel.
+      this.vy += 220 * dt;
+      if (this.y < CEILING_Y || this.x < WALL_L || this.x > WALL_R || this.y > game.canvas.height) {
+        this.dead = true;
+      }
     }
   }
 
@@ -154,10 +218,23 @@ export class Projectile {
       const dx = ball.x - this.x, dy = ball.y - this.y;
       return Math.sqrt(dx*dx + dy*dy) < ball.r + this.r;
     }
+    if (this.type === 'grapple') {
+      // Identical hit geometry to harpoon — the vertical wire segment.
+      if (ball.x + ball.r < this.x - this.w/2) return false;
+      if (ball.x - ball.r > this.x + this.w/2) return false;
+      if (ball.y + ball.r < this.tipY) return false;
+      if (ball.y - ball.r > this.startY) return false;
+      return true;
+    }
+    if (this.type === 'diagonal') {
+      const dx = ball.x - this.x, dy = ball.y - this.y;
+      return Math.sqrt(dx*dx + dy*dy) < ball.r + 8;
+    }
     return false;
   }
 
-  /** Most projectiles consume themselves on hit; laser/flame pierce. */
+  /** Most projectiles consume themselves on hit; laser/flame pierce.
+   *  Grapples are consumed on hit too (the wire breaks), matching arcade Pang. */
   consumeOnHit() {
     return !(this.type === 'laser' || this.type === 'flame' || this.type === 'shuriken');
   }
@@ -224,6 +301,62 @@ export class Projectile {
       ctx.stroke();
       ctx.fillStyle = '#ff5400';
       ctx.beginPath(); ctx.arc(this.x - 2, this.y - 2, 3, 0, Math.PI * 2); ctx.fill();
+    } else if (this.type === 'grapple') {
+      // Anchored grapples fade toward the end of their lifetime so the player
+      // knows the trap is about to disappear.
+      const fade = this.anchored ? clamp(this.anchorLife / 2.5, 0.4, 1) : 1;
+      ctx.globalAlpha = fade;
+      // Cable
+      ctx.strokeStyle = this.anchored ? '#9be7ff' : '#ffe9a8';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY); ctx.stroke();
+      // Highlight strand
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY); ctx.stroke();
+      // Anchor hook at the top
+      if (this.anchored) {
+        ctx.fillStyle = '#9be7ff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.tipY, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0a3550';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Sparkle pulse so the player notices it's a live trap
+        const pulse = 0.5 + Math.abs(Math.sin(performance.now() / 220)) * 0.5;
+        ctx.globalAlpha = fade * 0.45 * pulse;
+        ctx.strokeStyle = '#9be7ff';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(this.x, this.tipY, 10, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        // Tip (same shape as harpoon tip)
+        ctx.fillStyle = '#ffeb3b';
+        ctx.beginPath();
+        ctx.moveTo(this.x - 5, this.tipY + 6);
+        ctx.lineTo(this.x + 5, this.tipY + 6);
+        ctx.lineTo(this.x, this.tipY - 6);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (this.type === 'diagonal') {
+      // Short bolt rendered along its travel direction. Includes a faint
+      // motion-trail cable to read as a Pang-style harpoon at an angle.
+      const ang = Math.atan2(this.vy, this.vx);
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(ang);
+      ctx.strokeStyle = '#ffe9a8';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(0, 0); ctx.stroke();
+      ctx.fillStyle = '#ffeb3b';
+      ctx.beginPath();
+      ctx.moveTo(8, 0);
+      ctx.lineTo(-2, -4);
+      ctx.lineTo(-2, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
   }
 }

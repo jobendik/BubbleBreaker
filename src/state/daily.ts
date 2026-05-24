@@ -128,13 +128,17 @@ export function renderDailyIntro(game: Game) {
 
 // ---------- Daily Challenge: result screen ----------
 export function getDailyResultLayout() {
-  const btnW = 200, btnH = 56, gap = 16;
-  const totalW = btnW * 2 + gap;
+  // Three buttons: Copy, Tweet, Menu. Tweet adds virality on top of the
+  // local-clipboard copy fallback. The X intent URL opens in a new tab and
+  // works without requiring a Twitter SDK / login.
+  const btnW = 170, btnH = 56, gap = 12;
+  const totalW = btnW * 3 + gap * 2;
   const startX = W/2 - totalW / 2;
   const y = H - 110;
   return {
-    copy: { x: startX,              y, w: btnW, h: btnH },
-    menu: { x: startX + btnW + gap, y, w: btnW, h: btnH },
+    copy:  { x: startX,                  y, w: btnW, h: btnH },
+    tweet: { x: startX + (btnW + gap),   y, w: btnW, h: btnH },
+    menu:  { x: startX + (btnW + gap) * 2, y, w: btnW, h: btnH },
   };
 }
 
@@ -145,6 +149,12 @@ export function updateDailyResult(game: Game) {
     if (pointerHit(layout.copy.x, layout.copy.y, layout.copy.w, layout.copy.h)) {
       pointer.pressed = false;
       copyDailyShareText(game);
+      return;
+    }
+    if (pointerHit(layout.tweet.x, layout.tweet.y, layout.tweet.w, layout.tweet.h)) {
+      pointer.pressed = false;
+      AudioSys.menu();
+      openDailyShareTweet(game);
       return;
     }
     if (pointerHit(layout.menu.x, layout.menu.y, layout.menu.w, layout.menu.h)) {
@@ -160,9 +170,27 @@ export function updateDailyResult(game: Game) {
   }
 }
 
-export function copyDailyShareText(game: Game) {
+/** Build the shareable text. Centralized so Copy and Tweet stay in sync. */
+function buildShareText(game: Game): string {
   const pick = game.daily ?? pickDailyChallenge();
-  const text = `I scored ${game.dailyResultScore.toLocaleString()} on today's Bubble Breaker daily — modifier: ${pick.modifierLabel}. Beat me!`;
+  return `I scored ${game.dailyResultScore.toLocaleString()} on today's Bubble Breaker daily — modifier: ${pick.modifierLabel}. Beat me!`;
+}
+
+/** Open an X (Twitter) share intent in a new tab. Works without SDKs/login. */
+export function openDailyShareTweet(game: Game) {
+  const text = buildShareText(game);
+  // The X intent URL accepts `text` and optional `url`. We don't have a public
+  // landing page yet; just the text. window.open with 'noopener' avoids
+  // exposing window.opener to the new tab (security hygiene).
+  const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+  try {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    game.dailyResultShareCopied = game.t; // reuse the "shared" flash state
+  } catch { /* popup blocked — silently fail; Copy is the fallback */ }
+}
+
+export function copyDailyShareText(game: Game) {
+  const text = buildShareText(game);
   const fallback = () => {
     // Older browsers / iframes without clipboard permissions: select & exec a copy.
     try {
@@ -256,7 +284,19 @@ export function renderDailyResult(game: Game) {
   ctx.font = 'bold 20px sans-serif';
   ctx.fillStyle = justCopied ? '#0a1832' : (copyHover ? '#0a1832' : '#fff');
   ctx.textAlign = 'center';
-  ctx.fillText(justCopied ? 'COPIED ✓' : 'COPY RESULT', layout.copy.x + layout.copy.w / 2, layout.copy.y + 36);
+  ctx.fillText(justCopied ? 'COPIED ✓' : 'COPY', layout.copy.x + layout.copy.w / 2, layout.copy.y + 36);
+
+  // Tweet button — opens an X share intent in a new tab.
+  const tweetHover = pointerOver(layout.tweet.x, layout.tweet.y, layout.tweet.w, layout.tweet.h);
+  ctx.fillStyle = tweetHover ? '#9be7ff' : 'rgba(29,161,242,0.85)';
+  roundRect(ctx, layout.tweet.x, layout.tweet.y, layout.tweet.w, layout.tweet.h, 12, true, false);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = tweetHover ? '#0a1832' : 'rgba(255,255,255,0.55)';
+  roundRect(ctx, layout.tweet.x, layout.tweet.y, layout.tweet.w, layout.tweet.h, 12, false, true);
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillStyle = '#0a1832';
+  ctx.textAlign = 'center';
+  ctx.fillText('SHARE ON X', layout.tweet.x + layout.tweet.w / 2, layout.tweet.y + 36);
 
   const menuHover = pointerOver(layout.menu.x, layout.menu.y, layout.menu.w, layout.menu.h);
   ctx.fillStyle = menuHover ? '#ffd60a' : '#ff7f50';

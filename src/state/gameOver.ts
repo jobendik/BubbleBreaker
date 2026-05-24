@@ -33,7 +33,7 @@ export function canRewardedContinue(game: Game): boolean {
   if (!Sdk.hasSDK) return false;
   if (game.usedRewardedContinue) return false;
   if (game.awaitingAd) return false;
-  return game.mode === 'score_attack' || game.mode === 'panic';
+  return game.mode === 'score_attack' || game.mode === 'panic' || game.mode === 'boss_rush';
 }
 
 export function getGameOverLayout() {
@@ -54,12 +54,18 @@ export function startRewardedContinue(game: Game) {
     if (game.mode === 'panic') {
       if (game.player) game.respawnPlayer(game.player);
       game.state = State.PLAYING;
-    } else if (game.mode === 'score_attack') {
-      // Reload the current level but keep score and the used-continue flag.
+    } else if (game.mode === 'score_attack' || game.mode === 'boss_rush') {
+      // Reload the current level but keep score, queued bosses, and the
+      // used-continue flag. Boss Rush specifically needs the queue preserved
+      // so the continue resumes the gauntlet from this fight, not the start.
       const keepScore = game.score;
       const keepLevel = game.levelIndex;
+      const keepQueue = game.bossRushQueue.slice();
+      const keepCount = game.bossRushCount;
       game.loadLevel(keepLevel);
       game.score = keepScore;
+      game.bossRushQueue = keepQueue;
+      game.bossRushCount = keepCount;
       game.usedRewardedContinue = true; // _resetRunFlags is not called here
     }
   });
@@ -86,6 +92,7 @@ export function updateGameOver(game: Game) {
     AudioSys.menu();
     if (game.mode === 'score_attack') game.startScoreAttack();
     else if (game.mode === 'panic') game.startPanic();
+    else if (game.mode === 'boss_rush') game.startBossRush();
     else game.loadLevel(game.levelIndex);
   }
 }
@@ -121,6 +128,16 @@ export function renderGameOver(game: Game) {
     ctx.font = newBest ? 'bold 20px sans-serif' : '20px sans-serif';
     ctx.fillStyle = newBest ? '#ffd60a' : '#cfd6df';
     ctx.fillText(newBest ? 'NEW BEST!' : 'Best Score: ' + best, W/2, H/2 + 60);
+  } else if (game.mode === 'boss_rush') {
+    const newCount = game.bossRushCount > (Storage.data.bestBossRushCount || 0);
+    const newScore = game.score > (Storage.data.bestBossRush || 0);
+    ctx.font = newCount ? 'bold 20px sans-serif' : '20px sans-serif';
+    ctx.fillStyle = newCount ? '#ffd60a' : '#cfd6df';
+    ctx.fillText('Bosses defeated: ' + game.bossRushCount + (newCount ? '  •  NEW BEST!' : ''), W/2, H/2 + 60);
+    ctx.font = '14px sans-serif'; ctx.fillStyle = '#cfd6df';
+    ctx.fillText('Best run: ' + Math.max(Storage.data.bestBossRushCount || 0, game.bossRushCount)
+      + ' bosses  •  ' + Math.max(Storage.data.bestBossRush || 0, game.score) + ' score'
+      + (newScore ? '  •  NEW SCORE!' : ''), W/2, H/2 + 86);
   }
   // Rewarded continue button (Score Attack / Panic only, when SDK present).
   if (canRewardedContinue(game)) {

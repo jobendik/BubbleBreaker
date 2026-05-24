@@ -12,6 +12,22 @@ export function updateLevelClear(game: Game) {
     AudioSys.menu();
     game.summary = null;
     if (game.bossLevel) {
+      // Boss Rush: pull the next boss from the queue. If empty, we've
+      // completed the rush — go to VICTORY (it doubles as the BR result).
+      if (game.mode === 'boss_rush') {
+        game.bossRushCount++;
+        const nextBossIndex = game.bossRushQueue.shift();
+        if (nextBossIndex == null) {
+          game.saveRunBest();
+          game.state = State.VICTORY;
+          return;
+        }
+        game.loadLevel(nextBossIndex);
+        game.introTitle = 'BOSS ' + (game.bossRushCount + 1);
+        game.introText = 'Defeat every boss in sequence.';
+        game.introTimer = 3;
+        return;
+      }
       game.state = State.VICTORY;
       return;
     }

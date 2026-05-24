@@ -1,6 +1,6 @@
 # Bubble Breaker Adventure — Launch Pack
 
-> Everything you need to take the game from "Phase 6 complete" to "submitted on CrazyGames." Listing copy, cover-art brief, release-candidate checklist, smoke-test script, and post-launch metrics watchlist.
+> Everything you need to take the game from "feature-complete" to "submitted on CrazyGames." Listing copy, cover-art brief, release-candidate checklist, smoke-test script, and post-launch metrics watchlist.
 
 ---
 
@@ -12,13 +12,13 @@
 
 ### 1.2 One-sentence pitch (used on CrazyGames game page)
 
-> **Bubble Breaker Adventure is a fast, modern take on the classic Pang-style arcade game — split bouncing balls before they touch you, chain pops for big combos, and conquer 18 hand-crafted levels plus a daily challenge.**
+> **Bubble Breaker Adventure is a fast, modern take on the classic Pang formula — split bouncing balls before they touch you, chain pops for huge combos, and conquer 18 hand-crafted levels, Boss Rush, Panic Mode, and a daily challenge.**
 
 ### 1.3 Three feature bullets
 
-- **18 hand-crafted levels across 6 worlds**, including a boss fight and three modes (Tour, Score Attack, Panic).
-- **Daily Challenge** with a global rotating modifier — one shared level + twist per day, with a streak counter that rewards coming back.
-- **Pure browser arcade**: loads in seconds, plays on desktop or touch, no account needed. Local co-op on desktop (P2 joins mid-game).
+- **18 hand-crafted levels across 6 worlds**, plus a boss fight and five distinct modes: Tour, Score Attack, Panic, Boss Rush, and Today's Challenge.
+- **Daily Challenge** with a globally synced modifier — one shared level + twist per UTC day, with a 🔥 streak counter, copy-to-clipboard result, and one-tap share on X.
+- **Pure browser arcade**: loads in seconds, plays on desktop or touch, no account needed. Local co-op on desktop with Pang-Adventures-style revive.
 
 ### 1.4 Genre / category
 
@@ -32,11 +32,11 @@
 >
 > Bubble Breaker Adventure is a modern browser take on the classic Pang / Buster Bros arcade formula. Bouncing balls split into smaller, faster ones when you hit them. Your only job: clear the screen before one touches you.
 >
-> Across 18 hand-crafted levels and 6 worlds you'll face armored balls, lava drops, electric discharges, smoke clouds, falling rocks, and a boss who really does not want to lose. Pick up powerful weapons — laser, flamethrower, shotgun, shuriken, bomb — and chain pops for combo multipliers.
+> Across 18 hand-crafted levels and 6 worlds you'll face armored balls, hexagonal Super Pang bouncers, lava drops, electric discharges, smoke clouds, falling rocks, weapon-jamming birds, friendly dragons, and a boss who really does not want to lose. Pick up powerful weapons — triple harpoon, ceiling-anchoring grapple, diagonal bolts, laser, flamethrower, shotgun, shuriken, bomb, and the screen-shrinking Dynamite — and chain pops for huge combo multipliers.
 >
-> When you've mastered Tour mode, push your skill in Score Attack or test your reflexes in endless Panic mode. Or play today's Daily Challenge — one shared level with a global modifier, refreshed every UTC midnight, with a streak that rewards coming back.
+> When you've mastered Tour mode, push your skill in Score Attack, test your reflexes in endless Panic mode (with the Rainbow Gauge and screen-clearing Star Bubbles), or take on Boss Rush. Or play today's Daily Challenge — one shared level with a global modifier, refreshed every UTC midnight, with a streak that rewards coming back.
 >
-> Plays on desktop, phone, and tablet. Optional local co-op on desktop (P2 joins mid-game). Accessibility: reduced-motion mode in the pause menu.
+> Plays on desktop, phone, and tablet. Optional local co-op on desktop with a 10-second revive window. Accessibility: reduced-motion mode in the pause menu.
 
 ### 1.6 Controls block (for the listing's "How to play" section)
 
@@ -96,8 +96,8 @@ Per the playbook, the video must show real gameplay fast — no cinematic intro.
 |---|---|
 | 0–2s | Cold-open on Level 1 mid-play: a ball splits, the player dodges, a particle burst flashes. |
 | 2–5s | Combo chain on screen — multiple pops in quick succession, COMBO ×5 text appears, milestone "NICE!" pops up. |
-| 5–9s | Weapon variety: a quick cut showing flamethrower, then laser, then bomb explosion. |
-| 9–13s | Escalation: armored balls, electric pre-discharge halo, falling rock landing telegraph, hazard avoided. |
+| 5–9s | Weapon variety: a quick cut showing flamethrower, then laser, then triple-harpoon wall of wires, then bomb explosion. |
+| 9–13s | Escalation: armored balls, hexagonal Super Pang bouncers, electric pre-discharge halo, falling rock landing telegraph, a Dynamite pickup shrinking the whole screen. |
 | 13–17s | Boss fight beat — Commander RIFT hit, health bar dropping, satisfying particle climax. |
 | 17–20s | Title card over a freeze-frame of a satisfying pop. "BUBBLE BREAKER ADVENTURE" logo. |
 
@@ -112,7 +112,7 @@ Walk through this end-to-end on the latest build (`npm run build && npm run prev
 ### 3.1 Loading & boot
 
 - [ ] Cold load completes in < 5 seconds on a fast connection (target: under 3 seconds; CrazyGames benchmark is 10 seconds).
-- [ ] Bundle is under 50 KB gzipped (currently ~28 KB — well under).
+- [ ] Bundle is under 50 KB gzipped (currently ~39 KB — well under).
 - [ ] No console errors during boot.
 - [ ] DevTools Network tab shows no failed requests (404 on the SDK is OK if testing offline; the adapter falls back).
 - [ ] DevTools Application → Local Storage shows `bba_save_v2` after first interaction.
@@ -138,8 +138,9 @@ Walk through this end-to-end on the latest build (`npm run build && npm run prev
 - [ ] **PLAY/CONTINUE** — starts Tour from highest unlocked level (verify via keyboard Enter, mouse click, and touch).
 - [ ] **Daily Challenge** button — opens daily intro screen.
 - [ ] **Levels** — opens level select grid; medals visible on cleared tiles.
-- [ ] **Modes** — opens mode select with Tour / Score Attack / Panic / Back.
-- [ ] **Controls** — shows control reference.
+- [ ] **Modes** — opens mode select with Tour / Score Attack / Panic / Boss Rush / Back.
+- [ ] **Stats** — shows lifetime pops/tricks/play-time/medals/titles.
+- [ ] **Controls** — shows controls + bestiary + weapons + pickups glossary.
 - [ ] **Credits** — shows credits.
 - [ ] Sound icon (top-right) toggles mute; state persists across reload.
 - [ ] Arrow keys navigate menu; Enter confirms current selection.
@@ -171,8 +172,20 @@ Walk through this end-to-end on the latest build (`npm run build && npm run prev
 - [ ] Wave counter increments correctly.
 - [ ] Ball type variety appears starting wave 3.
 - [ ] Pickup appears every 3rd wave; falling rock every 5th.
+- [ ] Rainbow Gauge fills with pops; on full, force-advances the wave with bonus.
+- [ ] Star Bubble drops periodically (~30s if none on screen). Cycles between Clock face (universal freeze) and Star face (screen clear + score sweep).
+- [ ] Flashing time-stop micro-balls (size 0) grant a brief freeze when popped.
 - [ ] Game over shows wave reached and "NEW BEST!" if applicable.
 - [ ] Rewarded continue restores 1 life and respawns in place (don't reset score/wave).
+
+### 3.7b Boss Rush
+
+- [ ] Starts at the first boss-flagged level; queues remaining bosses to a 3-fight minimum.
+- [ ] Each boss intro banner reads "BOSS N".
+- [ ] Lives carry across bosses; deaths decrement total lives, not per-boss.
+- [ ] Game over shows "Bosses defeated: N" with NEW BEST! if applicable, plus best-ever score.
+- [ ] Rewarded continue preserves the queue/count so the run resumes from the current boss.
+- [ ] Final boss defeated → VICTORY screen; `bestBossRush` and `bestBossRushCount` persist.
 
 ### 3.8 Daily Challenge
 
@@ -184,7 +197,8 @@ Walk through this end-to-end on the latest build (`npm run build && npm run prev
   - [ ] `big_bubbles`: balls start one size larger than baseline
   - [ ] `sudden_death`: lives = 1
 - [ ] Result screen on win or fail shows score, today's best, streak.
-- [ ] COPY RESULT button shows "COPIED ✓" briefly; paste verifies clipboard content.
+- [ ] COPY button shows "COPIED ✓" briefly; paste verifies clipboard content.
+- [ ] SHARE ON X button opens an X intent URL in a new tab with the result text.
 - [ ] Streak increments only on first attempt of the day, not on retries.
 - [ ] Test by changing system date: skipping a day resets streak; consecutive days bump it.
 
@@ -347,8 +361,8 @@ Big drop between `gameplay.start` and `first_pop` = first-minute design problem.
 
 1. CrazyGames review: typically 1–3 business days for the Basic Launch path.
 2. Reviewer may request changes — most commonly:
-   - **Ads:** "ads are firing during gameplay" (we're safe; midgame only at level breaks).
-   - **Build size:** "build is too large" (we're 28 KB — not a concern).
+   - **Ads:** "ads are firing during gameplay" (we're safe; midgame only at level breaks, 60s spacing).
+   - **Build size:** "build is too large" (we're ~39 KB gzipped — not a concern).
    - **Crashes:** "console errors on load" (run 3.14 again before submission).
    - **Pause / leave:** "no way to exit a run" (we have pause + menu button).
 3. Once approved, the game appears in CrazyGames' moderation queue, then live within a few days.

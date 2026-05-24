@@ -1,7 +1,9 @@
-import { H, State, W } from '../constants';
+import { CEILING_Y, H, State, W } from '../constants';
 import { LEVELS } from '../data/levels';
+import { Ball } from '../entities/ball';
 import { FloatingText, Shockwave } from '../entities/particle';
 import { drawBackground, roundRect } from '../rendering/canvas';
+import { rand } from '../utils';
 import { AudioSys } from '../systems/audio';
 import { resolveCollisions } from '../systems/collisions';
 import { renderHUD, renderTouchControls } from '../systems/hud';
@@ -145,6 +147,7 @@ export function updatePlaying(game: Game, dt: number) {
 
   for (const p of game.platforms) p.update(dt);
   for (const c of game.crabs) c.update(dt);
+  for (const cr of game.creatures) cr.update(motionDt);
   for (const b of game.balls) b.update(motionDt, game);
   for (const p of game.projectiles) p.update(dt, game);
   for (const pk of game.pickups) pk.update(dt, game);
@@ -170,6 +173,7 @@ export function updatePlaying(game: Game, dt: number) {
   game.pickups       = game.pickups.filter(p => !p.dead);
   game.destructibles = game.destructibles.filter(d => !d.dead);
   game.hazards       = game.hazards.filter(h => !h.dead);
+  game.creatures     = game.creatures.filter(c => !c.dead);
   game.particles     = game.particles.filter(p => !p.dead);
   game.shockwaves    = game.shockwaves.filter(s => !s.dead);
   game.smokeClouds   = game.smokeClouds.filter(p => !p.dead);
@@ -189,6 +193,23 @@ export function updatePlaying(game: Game, dt: number) {
       Storage.save();
     }
   } else if (game.mode === 'panic') {
+    // Star Bubble timer — drops one Star Bubble periodically so the player
+    // always has a screen-clear / freeze option even on long survivals.
+    if (game.panicStarTimer > 0) game.panicStarTimer -= dt;
+    const noStarOnScreen = !game.balls.some(b => b.type === 'star');
+    if (game.panicStarTimer <= 0 && noStarOnScreen) {
+      game.balls.push(new Ball(rand(140, W - 140), CEILING_Y + 40, 2, 'star', rand(-90, 90), 60));
+      game.floatingTexts.push(new FloatingText(W/2, H/2 - 40, 'STAR BUBBLE!', '#ffd60a', 22));
+      game.panicStarTimer = 30;
+    }
+    // Rainbow Gauge: when full, force the next wave even mid-fight. Mirrors
+    // Pang's Panic Mode where the gauge advances levels independently of clears.
+    if (game.panicGauge >= game.panicGaugeMax) {
+      game.panicGauge = 0;
+      game.addScore(300 * game.panicWave);
+      game.floatingTexts.push(new FloatingText(W/2, H/2 - 18, 'GAUGE FULL!', '#ffd60a', 30));
+      game.advancePanicWave();
+    }
     if (game.balls.length === 0 && game.boss == null) {
       if (game.panicWave > Storage.data.bestPanicWave) {
         Storage.data.bestPanicWave = game.panicWave; Storage.save();
@@ -215,12 +236,34 @@ export function renderWorld(game: Game) {
   for (const d of game.destructibles) if (!d.dead) d.draw(ctx);
   for (const h of game.hazards) h.draw(ctx);
   for (const c of game.crabs) c.draw(ctx);
+  for (const cr of game.creatures) cr.draw(ctx);
   for (const pk of game.pickups) pk.draw(ctx);
   if (game.boss) game.boss.draw(ctx);
   for (const b of game.balls) b.draw(ctx);
   for (const p of game.projectiles) p.draw(ctx);
   if (game.player) game.player.draw(ctx);
   if (game.player2) game.player2.draw(ctx);
+  // Downed-player marker — drawn ONLY in co-op, when one player is dead but
+  // their revive window is still open. Standing over the prompt revives them.
+  if (game.player && game.player2) {
+    for (const p of [game.player, game.player2]) {
+      if (p && p.dead && p.respawnTimer > 0.05) {
+        const blink = 0.5 + Math.abs(Math.sin(performance.now() / 200)) * 0.5;
+        ctx.save();
+        ctx.globalAlpha = blink;
+        ctx.strokeStyle = '#06d6a0';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y - 8, 22, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#06d6a0';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('REVIVE  ' + Math.ceil(p.respawnTimer) + 's', p.x, p.y - 36);
+        ctx.restore();
+      }
+    }
+  }
   for (const pt of game.particles) pt.draw(ctx);
   for (const sw of game.shockwaves) sw.draw(ctx);
   for (const sc of game.smokeClouds) sc.draw(ctx);

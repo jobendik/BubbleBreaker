@@ -11,6 +11,11 @@ export const BALL_BOUNCE  = [340, 410, 490, 570, 650];   // floor bounce velocit
 export const BALL_HSPEED  = [200, 165, 140, 115, 95];    // horizontal travel
 export const BALL_SCORE   = [200, 150, 100, 75, 50];
 
+// Hexagons travel a touch faster horizontally and bounce slightly higher than
+// their round counterparts — homage to Super Pang's Exagon physics.
+export const HEX_HSPEED_MULT = 1.18;
+export const HEX_BOUNCE_MULT = 1.08;
+
 // Color palettes per ball type [primary, dark]
 export const BALL_COLORS = {
   normal:    ['#ff4d6d', '#9d0a32'],
@@ -21,6 +26,12 @@ export const BALL_COLORS = {
   sludge:    ['#9be15d', '#3a6b1c'],
   armored:   ['#c7ccd1', '#4f555a'],
   bonus:     ['#06d6a0', '#0a7058'],
+  // Super Pang polygonal variant — sharper, jagged trajectory. Visually
+  // distinct so the player can read it instantly against the bouncing roster.
+  hexagon:   ['#9e7bff', '#3d1a8a'],
+  // Panic-mode shimmering bubble — flashing colors signal the screen-clear
+  // power-up moment (cycles Clock / Star icons).
+  star:      ['#ffffff', '#ffd60a'],
 } as const;
 
 // Theme palettes per world (sky top, sky bottom, ground top, ground bottom, accent)
@@ -81,7 +92,12 @@ export const DEATH_REASON_TEXT: Record<DeathReason, string> = {
 export type BallType = keyof typeof BALL_COLORS;
 export type ThemeName = keyof typeof THEMES;
 export type GameState = (typeof State)[keyof typeof State];
-export type GameMode = 'tour' | 'score_attack' | 'panic' | 'daily';
 export type DailyModifierId = (typeof DAILY_MODIFIERS)[number]['id'];
-export type WeaponType = 'harpoon' | 'double' | 'machinegun' | 'laser' | 'flame' | 'shotgun' | 'shuriken' | 'bomb';
-export type PickupType = WeaponType | 'shield' | 'score' | 'life' | 'time' | 'slowtime' | 'freeze' | 'clearsmoke' | 'magnet' | 'combo';
+// 'triple'   — three concurrent harpoons (Pang! 3)
+// 'powerwire' — wire anchors to ceiling, persists until struck by a ball (defensive trap)
+// 'diagonal' — fires twin 45-degree harpoons (Sheila the Thief homage)
+export type WeaponType = 'harpoon' | 'double' | 'triple' | 'powerwire' | 'diagonal'
+  | 'machinegun' | 'laser' | 'flame' | 'shotgun' | 'shuriken' | 'bomb';
+export type PickupType = WeaponType | 'shield' | 'score' | 'life' | 'time'
+  | 'slowtime' | 'freeze' | 'clearsmoke' | 'magnet' | 'combo' | 'dynamite';
+export type GameMode = 'tour' | 'score_attack' | 'panic' | 'daily' | 'boss_rush';

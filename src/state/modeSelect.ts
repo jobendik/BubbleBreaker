@@ -8,7 +8,8 @@ import type { Game } from '../game';
 const MODE_ITEMS = [
   { title: 'TOUR',         desc: 'The campaign. 18 stages across 6 worlds + boss.' },
   { title: 'SCORE ATTACK', desc: '3 lives, no continues. Beat your best.' },
-  { title: 'PANIC MODE',   desc: 'Endless waves. Survive as long as you can.' },
+  { title: 'PANIC MODE',   desc: 'Endless waves with a Rainbow Gauge and Star Bubbles.' },
+  { title: 'BOSS RUSH',    desc: 'Defeat every boss in sequence. No retries.' },
   { title: 'BACK',         desc: 'Return to main menu.' },
 ];
 
@@ -33,7 +34,8 @@ export function updateModeSelect(game: Game) {
     if (game.modeSelectIndex === 0) game.state = State.LEVEL_SELECT;
     else if (game.modeSelectIndex === 1) game.startScoreAttack();
     else if (game.modeSelectIndex === 2) game.startPanic();
-    else if (game.modeSelectIndex === 3) game.state = State.MAIN_MENU;
+    else if (game.modeSelectIndex === 3) game.startBossRush();
+    else if (game.modeSelectIndex === 4) game.state = State.MAIN_MENU;
   }
 }
 

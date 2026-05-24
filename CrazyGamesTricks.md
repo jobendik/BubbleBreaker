@@ -31,7 +31,7 @@ That means:
 
 CrazyGames’ own Basic Launch guide frames the core launch KPIs as average playtime, Day 1 retention, and conversion. Their benchmark notes include: successful titles often reach **10+ minutes average playtime**, strong games often achieve **10–15% D1 retention**, and top-performing titles often convert **80%+**, load under **10 seconds**, and stay below **20 MB** build size.
 
-For a game like **Signal Clash**, this means the priority is not “more features.” The priority is: **faster clarity, faster first conflict, better session rhythm, fewer modal interruptions, better reasons to return, and fewer technical dead ends.**
+For **Bubble Breaker Adventure**, the build is already ~39 KB gzipped — load is not the bottleneck. The priority is: **faster path to the first pop, stronger daily-return hook, mobile readability, ad placement only at natural breaks, and visible signs that progress is being saved.**
 
 ---
 
@@ -200,31 +200,29 @@ The common indie mistake is reversing this order: adding features, modes, cosmet
 
 A good cover does not just show the game. It shows what the player **does**.
 
-For Signal Clash, the verb is not “sci-fi.” It is:
+For Bubble Breaker, the verb is not “arcade.” It is:
 
-- connect
-- defend
-- attack
-- destroy the core
-- control the network
-- blue versus red
-- tactical push
+- pop
+- split
+- dodge
+- chain
+- survive
+- combo
 
 The cover should show a clear gameplay-like conflict:
 
-- blue network on one side
-- red network on the other
-- a relay or core under attack
-- beams/projectiles moving in readable directions
-- no visual ambiguity about who attacks whom
+- player at the bottom, harpoon line shooting up
+- a large glossy ball descending and mid-split
+- a clear "about to pop" particle burst
+- no visual ambiguity about player vs. threat
 
 Bad cover promise:
 
-> Generic sci-fi explosion.
+> Generic arcade explosion.
 
 Good cover promise:
 
-> “I command blue squads and destroy the red core.”
+> “I pop the ball before it touches me.”
 
 ### 3.2 One main idea per thumbnail
 
@@ -297,30 +295,22 @@ Avoid:
 
 ### 3.6 The name must be instantly genre-readable
 
-“Signal Clash” is solid, but somewhat abstract. Abstract names need stronger visual support.
+“Bubble Breaker Adventure” is descriptive and a bit long for a thumbnail, but it is unambiguously genre-readable: bubble = the thing you break, adventure = there is more than one screen.
 
-If the name stays, the cover/video must clarify:
+The cover/video must reinforce:
 
-- this is a tactical RTS
-- blue vs red conflict
-- network/core/relay mechanics
-- fast browser battle
+- this is a single-screen arcade game
+- you shoot upward at bouncing balls
+- the balls split, the screen gets crowded
+- it is fast, satisfying, and skill-based
 
-If the name ever changes, stronger patterns for browser games are often:
+If the name ever changes (don't do this late — it loses search continuity), stronger patterns for browser games are often:
 
 - iconic noun + action verb
-- object + conflict
+- threat + verb
 - clear fantasy + mechanic
 
-Examples of naming logic, not direct recommendations:
-
-- Core Siege
-- Signal Siege
-- Relay Wars
-- Neon Network Clash
-- Core Rush RTS
-
-The risk with renaming late is losing identity. For Signal Clash, visual clarity is more urgent than renaming.
+The risk with renaming late is losing identity. For Bubble Breaker, visual clarity on the thumbnail is more urgent than renaming.
 
 ---
 
@@ -368,12 +358,12 @@ Choose:
 - no advanced mode toggles
 - no matchmaking complexity
 
-For Signal Clash:
+For Bubble Breaker (already done):
 
-- first session should probably be **Play vs Bot**
-- default bot should be **Recruit**, but with shorter warmup
-- first map should be symmetric, readable, and small enough for early contact
-- doctrine picker should not interrupt match 1
+- first-ever session auto-starts Level 1 — no menu shown
+- the very first ball is velocity-dampened 35% so a new player has time to read the trajectory
+- no mode picker / weapon picker / difficulty picker before the first pop
+- the level intro banner auto-dismisses on any input
 
 ### 4.3 Never block the first match with too much text
 
@@ -409,14 +399,13 @@ Good onboarding pattern:
 5. Reward the first successful action loudly.
 6. Remove hints gradually.
 
-For Signal Clash:
+For Bubble Breaker (already done):
 
-- start with one obvious neutral relay
-- pulse the relay
-- show “Capture this relay” only until done
-- spawn first red scout/assault early
-- let the player see the squad fire
-- show “Good — now defend the relay”
+- Level 1 has exactly one slow normal ball at the screen center
+- the intro banner reads "Move with A/D. Shoot UP with Space."
+- the player can move and shoot freely from frame one
+- the first successful pop triggers a screen-wide FIRST POP! fanfare with shockwave, flash, and audio arpeggio
+- subsequent levels introduce one new mechanic at a time (splitting, platforms, pickups, elemental balls, destructibles)
 
 ### 4.5 The first 10 seconds must not look dead
 
@@ -508,11 +497,12 @@ Recommended first-session pacing:
 
 If the first real threat appears after 90 seconds, many browser players will leave before the game begins.
 
-For Signal Clash:
+For Bubble Breaker:
 
-- Recruit warmup should likely be around 30 seconds, not 90 seconds
-- first enemy pressure should be visible by ~45 seconds
-- first combat should happen before the player reaches the “maybe I’m bored” threshold
+- the threat is on screen from frame one — the bouncing ball IS the danger AND the objective
+- no warmup required; gameplay is danger
+- pacing tension already comes from the timer + the splitting cascade — no artificial spawn waits
+- Panic Mode and Boss Rush each surface immediate, escalating danger; no "scout phase"
 
 ### 5.2 Use micro-goals every 20–40 seconds
 
@@ -589,15 +579,15 @@ A match should have a pulse:
 
 Avoid a flat match where the intensity is the same for 8 minutes.
 
-For Signal Clash, possible escalation beats:
+For Bubble Breaker, escalation beats:
 
-- first relay captured
-- first enemy squad spotted
-- first relay under attack
-- first core damage
-- signal storm begins
-- overtime / final push
-- enemy core vulnerable
+- first ball popped → child balls created
+- combo hits 5 → NICE! milestone with screen-wide payoff
+- first weapon pickup grabbed → arsenal change
+- a hazard (electric, falling rock) telegraphed and avoided
+- combo hits 10 → WILD! milestone, larger flash
+- last ball, low timer → CLUTCH! trick chip
+- level clear → medal tier reveal
 
 ### 5.6 Avoid “complexity cliffs”
 
@@ -823,11 +813,13 @@ Low-cost rotations:
 - “storm day” modifier
 - “relay rush” modifier
 
-For Signal Clash:
+For Bubble Breaker (already implemented):
 
-- Daily Tactical Directive: “Shield squads cost less today.”
-- Daily Objective: “Win a match after losing a relay.”
-- Daily Map Focus: “Today’s featured battlefield: Crosslink.”
+- Daily Challenge picks a non-boss level deterministically from the date.
+- Modifier pool of 5: Double Score, No Pickups, Tiny Hurtbox, Big Bubbles, Sudden Death.
+- Streak counter persists across UTC days; resets if a day is skipped.
+
+Future modifier ideas: All-Hexagon Wave, Hourglass Hush (no time pickups), Diagonal Only (forced weapon), Combo Champion (×2 score from combo).
 
 ### 6.10 Create mastery ladders
 
@@ -990,12 +982,10 @@ Good rewarded ad offers:
 - funny visual effect
 - temporary non-pay-to-win boost in casual mode
 
-For Signal Clash:
+For Bubble Breaker (current + future ideas):
 
-- double post-match XP
-- bonus cosmetic currency
-- unlock a temporary core skin preview
-- extra daily challenge reroll
+- **Currently implemented:** rewarded ad grants a "continue" (1 extra life) on Score Attack / Panic / Boss Rush game-over.
+- Future: double end-of-level score gem reward; reveal next-medal threshold; reroll Daily modifier (one per day).
 
 Avoid:
 
@@ -1578,7 +1568,7 @@ Measure:
 - time to first damage
 - time to match end
 
-For Signal Clash, these are more useful than broad opinions like “the game is confusing.”
+For Bubble Breaker, these are more useful than broad opinions like "the game is confusing." Today the codebase emits `boot.start`, `save.hydrate`, `sdk.init.start`, `sdk.init.done`, `boot.ready`, `gameplay.start`, `gameplay.stop`, `first_pop`, `level.clear`, `run.fail`, `error.uncaught`, `error.unhandled_rejection` (see `systems/analytics.ts`).
 
 ### 16.3 Track exits around friction points
 
@@ -1615,116 +1605,103 @@ Otherwise you cannot compare before/after updates.
 
 ---
 
-## 17. Signal Clash-specific recommendations
+## 17. Bubble Breaker Adventure-specific notes
 
-Based on the current analysis, Signal Clash’s most dangerous pattern is likely:
+Most of what's in this playbook is already applied. This section is the *delta* — what's been done, what's intentionally deferred, and what to watch after launch.
 
-> first-time player sees intro, then relatively empty early map, then gets interrupted by a doctrine picker around the time they are already close to leaving.
+### 17.1 Already in the build
 
-The highest-ROI Signal Clash fixes are:
+- First-ever-visit auto-start into Level 1 (no menu).
+- First-ever Level-1 ball velocity dampened 35% via the `firstPopCelebrated` save flag.
+- Big PLAY / CONTINUE button on a clean menu, secondary nav as small chips.
+- Daily Challenge front-and-center on the main menu with a breathing NEW badge.
+- Welcome-back banner across day boundaries.
+- 🔥 streak counter on the menu and daily intro.
+- Copy + Share-on-X buttons on the daily result.
+- Per-level bronze/silver/gold medals on the level-select grid.
+- Combo milestone fanfares (NICE / WILD / INSANE / GODLIKE) and trick chips (CLUTCH / AIR POP / etc.).
+- Hazard telegraphs (electric halo, falling-rock pulse ring, flame-vent windup, boss beam warning).
+- Touch UI with multi-touch, portrait orientation prompt, contrast-boosted pause button.
+- Reduced-motion accessibility toggle in the pause menu.
+- CrazyGames SDK v3 integration: gameplay events, happytime on PBs, midgame ads only between Tour levels (60s spacing, never first cleared level of session), rewarded continue on Score Attack / Panic / Boss Rush.
+- Cloud save mirror via the Data Module, merged on the higher-progress side per field.
+- Save schema versioned (`bba_save_v2`) with v1 migration.
 
-### 17.1 Day 1 fixes
+### 17.2 Intentionally deferred
 
-1. Cut Recruit warmup from 90s to around 30s.
-2. Auto-dismiss IntroOverlay after 3 seconds.
-3. First session default = Recruit, curated map, no customization required.
-4. Show first objective visually, not with long text.
-5. Ensure first enemy contact by ~45 seconds.
+- Online co-op / leaderboards (heavy engineering, low payoff for a single-screen arcade game).
+- Cosmetic shop / premium currency / battle pass (not appropriate for the platform or the genre).
+- Pang-Adventures-style alien-commander boss roster beyond Commander RIFT (content work; Boss Rush currently loops the existing boss to a 3-fight minimum).
+- Story panels / cutscenes (this is an arcade game; get to the action).
+- More than ~12 main-menu items (today has 7 entry points — restraint is the point).
 
-### 17.2 Day 2 fixes
+### 17.3 Post-launch watchlist
 
-1. Defer Doctrine Picker to match 2 or later.
-2. Or auto-pick default doctrine in match 1.
-3. Move doctrine explanation to post-match unlock moment.
-4. Add visible “Leave Match” button in local and online mode.
-5. Make first loss screen explain exactly what happened.
+If conversion is low → shorten the intro banner timer; make Level 1 even gentler.
+If session time is low → add a `level.start` event to find which level players quit on; tune that specific level.
+If D1 is low → make the welcome-back banner more visually prominent; add a "new content" marker for the daily.
+If D7 is low → add a second daily challenge variant; introduce a weekly leaderboard for daily scores.
+If rating mentions ads → reduce midgame frequency; never show the rewarded prompt twice per run.
+If players ask for "more levels" → that's the signal to start content expansion. Until then, polish wins.
 
-### 17.3 Day 3 fixes
+### 17.4 What would meaningfully move metrics, in order
 
-1. Add Daily Challenges widget to main menu.
-2. Add cosmetic/title unlock celebration in EndOfMatch.
-3. Add “Welcome back” banner using lastSessionDate.
-4. Add cloud save hydration logging.
-5. Add “1 more match to unlock X” post-match hook.
-
-### 17.4 Stability fixes
-
-1. Audit all audio timers during rematch.
-2. Audit RelayTooltip DOM cleanup.
-3. Add WebSocket onError visible reconnect banner.
-4. Add matchmaking/bot-fill timeout fallbacks.
-5. Add stale invite room fallback.
-6. Treat stuck lobby as crash-level severity.
-
-### 17.5 Multiplayer feel fixes
-
-1. Increase server snapshots from 10Hz to 20Hz before attempting interpolation.
-2. Add client-side interpolation later only when launch-critical bugs are gone.
-3. Keep PvP behind clearer onboarding if first-time players are struggling.
+1. **Thumbnail art** — single biggest CTR determinant. Mid-combo splash with GODLIKE overlay beats a generic player-with-harpoon shot.
+2. **Real-device QA** — verify 60 fps on a mid-range Android and iOS Safari; the touch controls need to feel right.
+3. **A second boss** — Boss Rush is more compelling with variety; one new boss roughly doubles the mode's depth.
+4. **One additional weekly modifier** — Daily Challenge gets staler when the modifier pool is small (currently 5).
+5. **A short loading splash inside the canvas** — Platform.loadingStart/Stop are already called, but a custom canvas splash would feel more premium than a blank frame.
 
 ---
 
-## 18. The “first 5 minutes” ideal script for Signal Clash
+## 18. The “first 5 minutes” ideal script for Bubble Breaker
 
 ### 0:00–0:05
 
-- Game loads quickly.
-- Main menu appears.
-- Big Play button pulses.
-- Background shows real Signal Clash battle identity.
+- Game loads (~39 KB gzipped — should feel instant).
+- First-ever visitor: skip menu entirely, drop into Level 1.
+- Returning visitor: main menu appears, big CONTINUE button pulses, daily NEW badge breathes if fresh.
 
 ### 0:05–0:10
 
-- Player clicks Play.
-- No difficulty/map/doctrine choice.
-- Match starts.
-- Camera frames player core and first relay.
+- Player presses any key or taps Play.
+- Level 1 starts.
+- Intro banner ("Beach Day — Move with A/D. Shoot UP with Space.") is visible but auto-dismisses on first input.
 
-### 0:10–0:25
+### 0:10–0:20
 
-- Pulse on first relay.
-- Hint: “Capture this relay.”
-- Player clicks/commands.
-- Relay connects with satisfying animation.
+- Single normal ball arcs slowly (35% velocity reduction is active for the first-ever pop).
+- Player moves under it, shoots up, harpoon connects.
+- Big "FIRST POP!" celebration: shockwave, white flash, audio arpeggio, floating text.
 
-### 0:25–0:45
+### 0:20–0:45
 
-- Hint: “Build a squad to defend it.”
-- Player builds first squad.
-- First enemy warning appears at edge.
+- Ball has split into two smaller children.
+- Player chases them down, hopefully chains a few pops.
+- If combo hits 5 → first "NICE!" milestone with screen-wide payoff.
 
-### 0:45–1:15
+### 0:45–1:30
 
-- First enemy arrives.
-- Squad fires.
-- Player sees hit feedback.
-- First enemy dies or player barely survives.
-- Toast: “Relay defended.”
+- Level 1 clears.
+- LEVEL CLEAR! summary card with base / time / accuracy / combo / no-miss bonuses + medal tier.
+- Press anything → Level 2 ("Sunny Splits") loads. No ad on first cleared level of session.
 
-### 1:15–2:00
+### 1:30–3:00
 
-- New objective: “Push toward enemy signal.”
-- Player captures next relay.
-- Enemy pressure increases.
-
-### 2:00–3:00
-
-- Bigger fight.
-- First core damage or first strong defensive moment.
-- No doctrine modal.
-- No big interruption.
+- World 1 continues: Sandcastles introduces platforms; Surf's Up introduces bonus balls + a shield.
+- Player encounters their first weapon pickup. Brief moment of "oh, the harpoon changed."
+- Combo system already creating "one more shot" moments.
 
 ### 3:00–5:00
 
-- Match escalates.
-- Player either wins, loses clearly, or reaches dramatic tension.
-- Post-match screen shows reward and next goal.
+- World 2 (Desert) introduces electric balls, then crate-caravan with destructibles, then a bigger arrangement.
+- A midgame ad may appear at the level-clear transition (60s minimum interval enforced).
+- Player either pushes deeper into Tour or backs out to try the Daily Challenge or Panic Mode.
 
-### After match 1
+### After level 1
 
-- Unlock doctrine choice.
-- Show first daily challenge progress.
-- Show “Play again” as dominant button.
+- Save persists: `unlockedLevel` bumps, medal recorded.
+- Returning tomorrow: welcome-back banner names the player (if signed into CrazyGames) and references their streak.
 
 ---
 
@@ -1878,79 +1855,65 @@ Do not:
 
 ---
 
-## 21. Release-candidate checklist for Signal Clash
+## 21. Release-candidate checklist for Bubble Breaker
 
-Before pushing the next build, verify:
+> The full version lives in [LAUNCH.md §3](LAUNCH.md). This is a one-page summary.
 
-- [ ] First session reaches gameplay without customization.
-- [ ] First player command possible within 10 seconds after Play.
-- [ ] First relay capture possible within 30 seconds.
-- [ ] First enemy contact happens within ~45 seconds.
-- [ ] Doctrine Picker does not interrupt match 1 at 3:00.
-- [ ] IntroOverlay auto-dismisses.
-- [ ] Recruit bot is active but not boring.
-- [ ] Local match has visible Leave Match.
-- [ ] Online match has visible Leave/Forfeit behavior.
-- [ ] Matchmaking has timeout/fallback.
-- [ ] Expired invite links do not trap users.
-- [ ] WebSocket errors show UI, not only console warnings.
-- [ ] Daily challenge widget appears on main menu.
-- [ ] End-of-match shows XP/progress/unlocks.
-- [ ] Returning player gets welcome-back/daily reset message.
-- [ ] Save hydration status is logged.
-- [ ] Sfx timers are cleaned up on rematch.
-- [ ] RelayTooltip DOM is cleaned up on scene shutdown.
-- [ ] 20 rematches in a row produce no uncaught errors.
-- [ ] Game works at 907×510, 1216×684, 1077×606, 821×462, and 1366×768.
-- [ ] Cover is readable at 150–250 px.
-- [ ] Preview video shows real gameplay in first 2 seconds.
+Before submitting the next build, verify:
+
+- [x] First session reaches gameplay without customization (auto-start Level 1 on empty save).
+- [x] First pop possible within ~10 seconds (first-ball velocity dampened on first-ever session).
+- [x] Intro banner auto-dismisses on first movement / shoot / tap.
+- [x] PLAY / Daily / Modes are the dominant primary actions on the menu.
+- [x] Pause + Menu reachable from any state (no trapped runs).
+- [x] Daily Challenge appears on main menu with streak counter.
+- [x] End-of-level shows medal tier earned + bonuses + best.
+- [x] Returning player gets welcome-back banner if a day has elapsed.
+- [x] Save hydration logged via `save.hydrate` analytics event.
+- [x] Cloud save merged on the higher-progress side per field.
+- [x] Mute and reduced-motion toggles reachable mid-run from the pause overlay.
+- [x] SDK calls degrade to silent no-ops when the script is absent.
+- [x] Bundle ~39 KB gzipped (well under 200 KB launch ceiling).
+- [ ] 20 rematches in a row produce no uncaught errors (operational).
+- [ ] Game works at 907×510, 1216×684, 1077×606, 821×462, and 1366×768 (operational).
+- [ ] Cover is readable at 150–250 px (artwork).
+- [ ] Preview video shows real gameplay in first 2 seconds (artwork).
 
 ---
 
-## 22. Recommended immediate roadmap
+## 22. Recommended post-launch roadmap
 
-### Patch A — first-minute rescue
-
-Goal: improve conversion and playtime.
-
-- shorten Recruit warmup
-- auto-dismiss intro
-- hide Customize on first session
-- curated first map/defaults
-- first enemy contact before 60s
-- no doctrine modal in match 1
-
-### Patch B — stuck/crash cleanup
-
-Goal: reduce crash rate and negative ratings.
-
-- audit timers/listeners/DOM cleanup
-- reconnect banner
-- bot-fill fallback
-- stale room fallback
-- leave match button
-- stuck-state watchdogs
-
-### Patch C — return tomorrow
-
-Goal: improve D1/D7.
-
-- daily challenges main menu widget
-- welcome-back banner
-- lastSessionDate
-- cosmetic unlock celebration
-- next-goal post-match card
-- save hydration logging
-
-### Patch D — storefront boost
+### Patch A — storefront polish (week 1 post-launch)
 
 Goal: improve CTR.
 
-- final readable cover set
-- preview video based on real gameplay
-- title/logo contrast polish
-- no misleading visuals
-- update cover after gameplay patch
+- Final thumbnail set (landscape / square / portrait) showing mid-combo with GODLIKE overlay.
+- 15-second preview video based on real gameplay; first frame is a satisfying pop, not a logo.
+- Update cover ~30 days after launch (CrazyGames algorithm rewards refreshes).
+
+### Patch B — content variety (only if metrics demand it)
+
+Goal: improve D7.
+
+- One additional boss for Boss Rush (Boss Rush currently loops a single boss to 3 fights).
+- One additional Daily Challenge modifier (pool is currently 5; new entries should change one tactical dimension).
+- One additional world / 4 new levels — only if "more levels" appears in user feedback.
+
+### Patch C — competitive layer (later)
+
+Goal: improve returning users and D30.
+
+- Online leaderboards for Daily Challenge and Panic.
+- Ghost / replay system for time trials.
+- Weekly tournament mode (5-level gauntlet, cumulative score).
+
+### Patch D — long-term identity (much later)
+
+Goal: meta-progression and identity hooks.
+
+- Cosmetic unlocks tied to medals (player skins, harpoon trails, pop-effect variants). No premium currency.
+- Achievement system layered onto the existing title system.
+- Level editor for internal use, then maybe for players.
 
 ---
 
@@ -1969,9 +1932,9 @@ The winning CrazyGames game is not necessarily the deepest game. It is the game 
 9. never traps them in broken states,
 10. and keeps improving based on data.
 
-For Signal Clash, the path is clear:
+For Bubble Breaker, the path is clear:
 
-> Do not chase more complexity right now. Make the first 5 minutes undeniable.
+> The game is feature-complete and launch-ready. Don't add more complexity right now. Make the first 30 seconds undeniable, ship, watch the metrics, and iterate on real signal.
 
 ---
 
@@ -1988,4 +1951,4 @@ This document is informed by current CrazyGames documentation and platform guida
 - CrazyGames Data Module documentation
 - CrazyGames FAQ / publishing process
 
-It also incorporates Signal Clash-specific observations from the current code/statistics analysis: early-session boredom, 90-second Recruit warmup, blocking IntroOverlay, doctrine picker timing, possible stuck/crash states, cloud-save hydration concerns, hidden daily challenges, and invisible cosmetic unlocks.
+It also incorporates Bubble Breaker-specific observations from the current codebase: the build's tiny gzipped size, the existing daily-challenge hook, the cloud-save Data Module integration, the boss-rush queue mechanics, and the launch-readiness audit captured in `LAUNCH.md` and `planForFurtherDev.md`.

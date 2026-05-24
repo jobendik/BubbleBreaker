@@ -1,7 +1,8 @@
 import { GROUND_Y, GRAVITY, type PickupType } from '../constants';
 import { AudioSys } from '../systems/audio';
 import { roundRect } from '../rendering/canvas';
-import { FloatingText } from './particle';
+import { FloatingText, Shockwave } from './particle';
+import { Ball } from './ball';
 import type { Player } from './player';
 import type { Game } from '../game';
 
@@ -10,6 +11,9 @@ export const PICKUP_INFO: Record<PickupType, { color: string; label: string }> =
   shield:     { color: '#3a86ff', label: 'S' },
   harpoon:    { color: '#ffe9a8', label: 'H' },
   double:     { color: '#06d6a0', label: '2' },
+  triple:     { color: '#9be7ff', label: '3' },
+  powerwire:  { color: '#9be7ff', label: 'W' },
+  diagonal:   { color: '#ffd60a', label: 'X' },
   machinegun: { color: '#fb5607', label: 'M' },
   laser:      { color: '#ff36c4', label: 'L' },
   flame:      { color: '#ff7733', label: 'F' },
@@ -24,6 +28,7 @@ export const PICKUP_INFO: Record<PickupType, { color: string; label: string }> =
   clearsmoke: { color: '#cfd6df', label: 'X' },
   magnet:     { color: '#f72585', label: 'M' },
   combo:      { color: '#ff36c4', label: 'C' },
+  dynamite:   { color: '#ff5400', label: 'D' },
 };
 
 export class Pickup {
@@ -84,6 +89,27 @@ export class Pickup {
     else if (t === 'clearsmoke') { game.smokeClouds.length = 0; game.floatingTexts.push(new FloatingText(this.x, this.y - 42, 'CLEAR!', '#cfd6df', 18)); }
     else if (t === 'magnet') { game.magnetTime = 8; }
     else if (t === 'combo') { game.comboBoostTime = 8; game.comboDecay = Math.max(game.comboDecay, 4); }
+    else if (t === 'dynamite') {
+      // Classic Pang Dynamite: every active ball is instantly reduced to its
+      // smallest size. High risk — a crowded screen becomes a swarm of fast
+      // micro-balls and can wipe the player. Preserves ball type so elemental
+      // hazards still apply (electric still discharges, sludge still drips).
+      game.flash = 0.45;
+      game.shake = 18;
+      const survivors: Ball[] = [];
+      for (const b of game.balls) {
+        if (b.dead) continue;
+        if (b.size === 0) {
+          survivors.push(b);
+        } else {
+          survivors.push(new Ball(b.x, b.y - 10, 0, b.type, b.vx, -180));
+        }
+      }
+      game.balls = survivors;
+      game.shockwaves.push(new Shockwave(this.x, this.y, 240, '#ff5400', 0.5));
+      game.floatingTexts.push(new FloatingText(this.x, this.y - 44, 'DYNAMITE!', '#ff5400', 22));
+      AudioSys.explode();
+    }
     else { player.setWeapon(t); }
   }
 

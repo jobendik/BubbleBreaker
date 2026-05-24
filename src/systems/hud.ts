@@ -63,13 +63,24 @@ export function renderTouchControls(game: Game) {
     ctx.textAlign = 'center';
     ctx.fillText('FIRE', cx, cy + 34);
   });
-  // PAUSE button (top-right)
+  // PAUSE button (top-right) — boosted contrast so a new mobile player can
+  // always find it. The base alpha was 0.22 which made it nearly invisible
+  // against bright backgrounds (beach/desert).
   const pHeld = isTouchButtonHeld('pause');
-  drawBtn(TOUCH_BUTTONS.pause, pHeld, (cx, cy) => {
-    ctx.fillStyle = pHeld ? '#0a1832' : '#fff';
-    ctx.fillRect(cx - 8, cy - 9, 5, 18);
-    ctx.fillRect(cx + 3, cy - 9, 5, 18);
-  });
+  const p = TOUCH_BUTTONS.pause;
+  ctx.globalAlpha = pHeld ? 0.75 : 0.55;
+  ctx.fillStyle = pHeld ? '#ffd60a' : '#0a1832';
+  roundRect(ctx, p.x, p.y, p.w, p.h, Math.min(p.w, p.h) / 2.5, true, false);
+  ctx.globalAlpha = pHeld ? 1 : 0.85;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2.5;
+  roundRect(ctx, p.x, p.y, p.w, p.h, Math.min(p.w, p.h) / 2.5, false, true);
+  ctx.globalAlpha = 1;
+  // Pause bars
+  ctx.fillStyle = pHeld ? '#0a1832' : '#fff';
+  const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+  ctx.fillRect(cx - 8, cy - 9, 5, 18);
+  ctx.fillRect(cx + 3, cy - 9, 5, 18);
 }
 
 /** Top-bar HUD: score, weapon, timer/wave, combo, lives, level name, effect
@@ -106,6 +117,24 @@ export function renderHUD(game: Game) {
   if (game.mode === 'panic') {
     ctx.fillStyle = '#ffd60a';
     ctx.fillText('WAVE ' + game.panicWave, W/2, 28);
+    // Rainbow Gauge — Pang's iconic panic-mode progress bar. The gradient runs
+    // through six hues so each filled segment reads as a distinct rainbow band.
+    const gw = 220, gh = 7;
+    const gx = W/2 - gw/2, gy = 50;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    roundRect(ctx, gx - 1, gy - 1, gw + 2, gh + 2, 3, true, false);
+    const stripe = ctx.createLinearGradient(gx, 0, gx + gw, 0);
+    stripe.addColorStop(0.00, '#ff4d6d');
+    stripe.addColorStop(0.20, '#ff7f50');
+    stripe.addColorStop(0.40, '#ffd60a');
+    stripe.addColorStop(0.60, '#06d6a0');
+    stripe.addColorStop(0.80, '#3a86ff');
+    stripe.addColorStop(1.00, '#9e7bff');
+    const ratio = Math.max(0, Math.min(1, game.panicGauge / game.panicGaugeMax));
+    ctx.fillStyle = stripe;
+    ctx.fillRect(gx, gy, gw * ratio, gh);
+    ctx.restore();
   } else {
     const lowTime = game.timer < 10;
     ctx.fillStyle = lowTime ? (Math.floor(game.timer * 4) % 2 ? '#ff4d6d' : '#fff') : '#fff';
@@ -146,6 +175,8 @@ export function renderHUD(game: Game) {
   if (game.freezeTime > 0) effects.push('FREEZE ' + Math.ceil(game.freezeTime));
   if (game.magnetTime > 0) effects.push('MAGNET ' + Math.ceil(game.magnetTime));
   if (game.comboBoostTime > 0) effects.push('BOOST ' + Math.ceil(game.comboBoostTime));
+  if (game.player && game.player.weaponDisabled > 0) effects.push('JAMMED ' + Math.ceil(game.player.weaponDisabled));
+  if (game.mode === 'boss_rush') effects.push('BOSS ' + (game.bossRushCount + 1));
   if (effects.length) {
     ctx.textAlign = 'center';
     ctx.font = 'bold 12px sans-serif';

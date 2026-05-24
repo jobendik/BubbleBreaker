@@ -1,4 +1,4 @@
-import { BALL_BOUNCE, BALL_COLORS, BALL_HSPEED, BALL_RADIUS, CEILING_Y, GROUND_Y, GRAVITY, WALL_L, WALL_R, type BallType, type PickupType } from '../constants';
+import { BALL_BOUNCE, BALL_COLORS, BALL_HSPEED, BALL_RADIUS, CEILING_Y, GROUND_Y, GRAVITY, HEX_BOUNCE_MULT, HEX_HSPEED_MULT, WALL_L, WALL_R, type BallType, type PickupType } from '../constants';
 import { AudioSys } from '../systems/audio';
 import { clamp, collideCircleRect, rand, randi } from '../utils';
 import { Hazard } from './hazard';
@@ -22,6 +22,21 @@ export class Ball {
   electricCharge: number;
   smokeTimer: number;
   squashTime: number;            // remaining seconds of squash-and-stretch after floor bounce
+  /** Panic-mode "time-stop micro-ball" marker. In Pang's Panic Mode, exactly
+   *  one tiny child in each large balloon's family tree is flagged: popping it
+   *  freezes all balls for ~2 seconds. We mirror this by tagging a child
+   *  during the deterministic split branch the homage requires (always the
+   *  LEFT child for normal balls; right child for hexagons). */
+  flashing: boolean;
+  /** True when this ball is one of Panic Mode's Star/Clock bubbles — a special
+   *  power-up bubble that cycles between Clock (freeze) and Star (clear)
+   *  states. Drawn with a shimmering body. */
+  star: boolean;
+  /** Cycle timer used by Star Bubbles to alternate between Clock and Star
+   *  modes (`starMode === 0` Clock, `starMode === 1` Star). Cycles slowly so
+   *  the player can choose which icon to pop. */
+  starMode: number;
+  starCycle: number;
   /** Total floor bounces since spawn. AIR POP trick checks this — a ball
    *  popped without ever touching the floor is a satisfying skill shot. */
   floorBounces: number;
@@ -38,7 +53,9 @@ export class Ball {
     this.size = size;
     this.r = BALL_RADIUS[size];
     this.type = type;
-    this.vx = vx || (Math.random() < 0.5 ? -1 : 1) * BALL_HSPEED[size];
+    // Hexagons travel a touch faster as a baseline; preserves the Super Pang feel.
+    const hspeed = BALL_HSPEED[size] * (type === 'hexagon' ? HEX_HSPEED_MULT : 1);
+    this.vx = vx || (Math.random() < 0.5 ? -1 : 1) * hspeed;
     this.vy = vy;
     this.dead = false;
     this.spin = 0;
@@ -48,25 +65,43 @@ export class Ball {
     this.electricCharge = rand(1.5, 3);              // electric ball discharge timer
     this.smokeTimer = 0;                             // smoke ball periodic puffs
     this.squashTime = 0;
+    this.flashing = false;
+    this.star = (type === 'star');
+    this.starMode = 0;
+    this.starCycle = 0;
     this.floorBounces = 0;
     this.age = 0;
     this.lastWallTime = -10;
   }
 
-  /** Mark for split. Children inherit position, opposite horizontal velocities. */
+  /** Mark for split. Children inherit position, opposite horizontal velocities.
+   *  Panic-mode "flashing micro-ball" propagation: the flashing flag travels
+   *  with one child per split until it bottoms out at size-0 (so the player
+   *  can actually pop it). For round balls the flag lives in the LEFT child;
+   *  for hexagons it lives in the RIGHT — matching the classic Pang rule. */
   split(game) {
     this.dead = true;
     if (this.size === 0) return [];
-    const children = [];
+    const childSize = this.size - 1;
+    const childSpeed = BALL_HSPEED[childSize] * (this.type === 'hexagon' ? HEX_HSPEED_MULT : 1);
+    const childBounce = BALL_BOUNCE[childSize] * (this.type === 'hexagon' ? HEX_BOUNCE_MULT : 1) * 0.65;
+    const children: Ball[] = [];
     for (let i = 0; i < 2; i++) {
       const dir = i === 0 ? -1 : 1;
       const child = new Ball(
         this.x, this.y - 8,
-        this.size - 1, this.type,
-        dir * BALL_HSPEED[this.size - 1],
-        -BALL_BOUNCE[this.size - 1] * 0.65
+        childSize, this.type,
+        dir * childSpeed,
+        -childBounce
       );
       children.push(child);
+    }
+    if (this.flashing || (game && game.mode === 'panic')) {
+      // Tag exactly one descendant per family — left for normal/elemental,
+      // right for hexagons. Either propagate an existing flag or seed a new
+      // one at the first split when running in Panic mode.
+      const idx = this.type === 'hexagon' ? 1 : 0;
+      children[idx].flashing = true;
     }
     return children;
   }
@@ -93,6 +128,12 @@ export class Ball {
       this.fuse -= dt;
       if (this.fuse <= 0) this.detonate(game);
     }
+    if (this.type === 'star' || this.star) {
+      // Cycle between Clock (mode 0, ~freeze) and Star (mode 1, ~clear).
+      // Long cycle (~3 s per face) so the player can choose; matches Pang.
+      this.starCycle += dt;
+      if (this.starCycle > 3) { this.starCycle = 0; this.starMode = 1 - this.starMode; }
+    }
 
     // Physics
     this.vy += GRAVITY * dt;
@@ -102,10 +143,18 @@ export class Ball {
     this.age += dt;
     if (this.squashTime > 0) this.squashTime = Math.max(0, this.squashTime - dt);
 
-    // Floor: arcade-consistent bounce (constant peak height)
+    // Floor: arcade-consistent bounce (constant peak height). Hexagon balls
+    // get a slight bounce-height boost AND a small horizontal-velocity jitter
+    // on each bounce, so their trajectory feels jagged rather than smooth.
     if (this.y + this.r >= GROUND_Y) {
       this.y = GROUND_Y - this.r;
-      this.vy = -BALL_BOUNCE[this.size];
+      const bounceMult = this.type === 'hexagon' ? HEX_BOUNCE_MULT : 1;
+      this.vy = -BALL_BOUNCE[this.size] * bounceMult;
+      if (this.type === 'hexagon') {
+        // Tiny direction jitter — never enough to flip sign, just enough to
+        // disrupt clean prediction. Caps protect us from runaway speeds.
+        this.vx *= (1 + rand(-0.06, 0.06));
+      }
       this.squashTime = 0.18;
       this.floorBounces++;
       // Lava ball drips on bounce
@@ -229,21 +278,53 @@ export class Ball {
     const rx = this.r * (1 + sqz * 0.28);
     const ry = this.r * (1 - sqz * 0.24);
     // Body
+    const isHex = this.type === 'hexagon';
     const grad = ctx.createRadialGradient(this.x - rx * 0.4, this.y - ry * 0.4, rx * 0.1, this.x, this.y, rx);
     grad.addColorStop(0, '#fff');
     grad.addColorStop(0.25, c[0]);
     grad.addColorStop(1, c[1]);
     ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.ellipse(this.x, this.y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    if (isHex) {
+      // Six-sided polygon, rotating slowly with horizontal velocity. Jagged
+      // silhouette reads instantly as different physics.
+      const rot = this.spin * 0.4 + this.x * 0.01;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = rot + (i / 6) * Math.PI * 2;
+        const px = this.x + Math.cos(a) * rx;
+        const py = this.y + Math.sin(a) * ry;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.ellipse(this.x, this.y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    }
     // Outline
     ctx.strokeStyle = '#1c0010';
     ctx.lineWidth = 2;
     ctx.stroke();
-    // Highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath();
-    ctx.ellipse(this.x - rx * 0.35, this.y - ry * 0.4, rx * 0.28, ry * 0.18, -0.4, 0, Math.PI * 2);
-    ctx.fill();
+    // Highlight (skip for hex — its angular silhouette already reads as such)
+    if (!isHex) {
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(this.x - rx * 0.35, this.y - ry * 0.4, rx * 0.28, ry * 0.18, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Flashing micro-ball marker (Panic mode) — strobing white ring around the
+    // ball. Visible only at size 0 since that's the ball the player must pop
+    // to trigger the time-stop reward.
+    if (this.flashing && this.size === 0) {
+      const strobe = 0.5 + Math.abs(Math.sin(performance.now() / 70)) * 0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.6 + strobe * 0.4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2 + strobe * 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r + 4 + strobe * 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Type icons
     if (this.type === 'electric') {
@@ -305,11 +386,50 @@ export class Ball {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('?', this.x, this.y);
       ctx.textBaseline = 'alphabetic';
+    } else if (this.type === 'star') {
+      // Cycle face: 0 = clock dial (freeze), 1 = star (full clear).
+      ctx.save();
+      ctx.fillStyle = '#0a1832';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      if (this.starMode === 0) {
+        // Clock dial — circle outline + two hands.
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r * 0.55, 0, Math.PI * 2);
+        ctx.stroke();
+        const ang = (performance.now() / 320) % (Math.PI * 2);
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + Math.cos(ang) * this.r * 0.45, this.y + Math.sin(ang) * this.r * 0.45);
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x, this.y - this.r * 0.4);
+        ctx.stroke();
+      } else {
+        // Filled star
+        ctx.fillStyle = '#ffd60a';
+        ctx.strokeStyle = '#5b3500';
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const ang = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          const r = i % 2 === 0 ? this.r * 0.65 : this.r * 0.28;
+          const sx = this.x + Math.cos(ang) * r;
+          const sy = this.y + Math.sin(ang) * r;
+          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
     }
   }
 }
 
 export function randomPickupType() {
-  const pool: PickupType[] = ['shield','double','machinegun','laser','flame','shotgun','shuriken','bomb','score','life','time','slowtime','freeze','clearsmoke','magnet','combo'];
+  const pool: PickupType[] = [
+    'shield','double','triple','powerwire','diagonal',
+    'machinegun','laser','flame','shotgun','shuriken','bomb',
+    'score','life','time','slowtime','freeze','clearsmoke','magnet','combo','dynamite',
+  ];
   return pool[randi(0, pool.length - 1)];
 }

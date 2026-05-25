@@ -8,15 +8,36 @@ import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 // ---------------- PLAYER DEAD (between-deaths transition) ----------------
+//
+// On every death except the final one, we respawn the player in place and
+// preserve the level state (balls in flight, boss HP, timer, score,
+// pickups on the floor). The lives system + combo reset + weapon reset
+// already provide the real penalty; layering a full level restart on top
+// is what made the game feel punishing relative to the genre.
+//
+// The exception is the `timeout` reason: the timer has hit 0, so
+// respawning in place would just kill the player again next frame
+// (infinite death loop). For timeouts we keep the legacy behavior —
+// reload the level with a fresh timer. Every other reason (ball,
+// hazard, crab, boss) hands control back to PLAYING with respawnPlayer.
 export function updatePlayerDead(game: Game, dt: number) {
   game.hitPause -= dt;
   if (game.hitPause <= 0) {
     if (game.lives > 0) {
-      if (game.mode === 'panic') {
+      if (game.lastDeathReason === 'timeout') {
+        // Timer ran out — there's no continuation that makes sense.
+        // Reload the level with a fresh clock. (Lives still decremented
+        // by killPlayer, so a timeout still costs a life.)
+        game.loadLevel(game.levelIndex);
+      } else {
+        // Respawn in place: balls keep their positions and velocities,
+        // boss HP persists, score and timer carry over, combo was reset
+        // when the life was lost, weapon was reset to harpoon, and the
+        // player gets 2s of invuln to recover (all handled by
+        // respawnPlayer). Works for tour, score_attack, daily, boss_rush,
+        // and panic alike.
         if (game.player) game.respawnPlayer(game.player);
         game.state = State.PLAYING;
-      } else {
-        game.loadLevel(game.levelIndex);
       }
     } else {
       game.state = State.GAME_OVER;

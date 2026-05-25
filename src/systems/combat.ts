@@ -114,23 +114,59 @@ export function popBall(game: Game, ball: Ball, source: any) {
   }
 
   // Pop feedback scales with ball size.
-  const color = BALL_COLORS[ball.type] ? BALL_COLORS[ball.type][0] : '#fff';
+  const palette = BALL_COLORS[ball.type] || BALL_COLORS.normal;
+  const color     = palette[0];
+  const colorDark = palette[1];
   const sz = ball.size;
-  const burstCount = 8 + sz * 6;
-  const burstMaxSpeed = 160 + sz * 30;
+  // Burst — primary spark spray, biased upward for a satisfying upward arc.
+  const burstCount = 10 + sz * 7;
+  const burstMaxSpeed = 180 + sz * 32;
   const burstSize = 4 + sz * 2;
   const burstLifeMin = 0.3 + sz * 0.05;
   const burstLifeMax = 0.55 + sz * 0.08;
   for (let i = 0; i < burstCount; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = rand(60, burstMaxSpeed);
+    // Upward bias on the vertical component — explosions read better when
+    // sparks favor going up before gravity pulls them down.
+    const vy = Math.sin(a) * s - rand(0, 80);
     game.particles.push(new Particle(
       ball.x, ball.y,
-      Math.cos(a) * s, Math.sin(a) * s,
-      rand(burstLifeMin, burstLifeMax), color, burstSize, 100,
+      Math.cos(a) * s, vy,
+      rand(burstLifeMin, burstLifeMax), color, burstSize, 140,
     ));
   }
-  game.shockwaves.push(new Shockwave(ball.x, ball.y, 42 + sz * 22, color, 0.26 + sz * 0.04));
+  // Fragment shards — larger, slower-drifting chunks in the dark palette
+  // color. Reads as "broken ball pieces" rather than sparks. Count scales
+  // gently with size so tiny pops stay tidy.
+  const shardCount = 4 + sz * 3;
+  for (let i = 0; i < shardCount; i++) {
+    const a = (i / shardCount) * Math.PI * 2 + rand(-0.3, 0.3);
+    const s = rand(80, 180 + sz * 20);
+    game.particles.push(new Particle(
+      ball.x, ball.y,
+      Math.cos(a) * s, Math.sin(a) * s - rand(40, 100),
+      rand(0.55, 0.85), colorDark, burstSize + 2, 240,
+    ));
+  }
+  // Double-ring shockwave — outer in ball color, inner in white. The white
+  // ring gives the pop a sharp "flashbulb" feel at the impact center.
+  game.shockwaves.push(new Shockwave(ball.x, ball.y, 46 + sz * 24, color, 0.28 + sz * 0.04));
+  game.shockwaves.push(new Shockwave(ball.x, ball.y, 24 + sz * 14, '#ffffff', 0.18 + sz * 0.02));
+  // Floor-dust puff — only if the pop happened near the floor. Adds a kicked-
+  // up cloud of dust at ground level so floor-hugging pops feel grounded.
+  if (ball.y > 380) {
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI + Math.random() * Math.PI;
+      const s = rand(40, 110);
+      game.particles.push(new Particle(
+        ball.x + rand(-12, 12),
+        Math.min(ball.y + ball.r, 484),
+        Math.cos(a) * s * 0.6, Math.sin(a) * s * 0.4 - 30,
+        rand(0.35, 0.55), '#d8c9a8', 5, 90,
+      ));
+    }
+  }
 
   // Combo milestone: every 5 combo, big floating text + chime + radial flash.
   // This is the moment the launch-pack listing copy is promising

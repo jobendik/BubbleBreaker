@@ -268,36 +268,141 @@ export class Player {
     ctx.ellipse(x, GROUND_Y + 2, 16, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body
+    // Body palette — P1 hero blue / P2 teal. Highlight/dark variants drive
+    // the torso gradient and the boot/strap detail.
     const bodyColor = this.isP2 ? '#34a0a4' : '#3a86ff';
     const bodyDark  = this.isP2 ? '#1d646a' : '#1b4fb8';
-    ctx.fillStyle = bodyColor;
+    const bodyHi    = this.isP2 ? '#6bd6db' : '#74b3ff';
+    const bootColor = this.isP2 ? '#0e3a3f' : '#0e2a6a';
     ctx.strokeStyle = '#0a1832';
     ctx.lineWidth = 2;
-    // Legs
-    ctx.fillRect(x - 9, y - 14, 6, 14);
-    ctx.fillRect(x + 3, y - 14, 6, 14);
-    ctx.strokeRect(x - 9, y - 14, 6, 14);
-    ctx.strokeRect(x + 3, y - 14, 6, 14);
-    // Torso with subtle vertical gradient — gives the character depth without
-    // changing silhouette or recognizability.
+    // Legs — walk-cycle sway offsets each leg vertically so the character
+    // visibly strides instead of just bobbing. Standing still produces near-
+    // zero swing (the walkAnim still ticks but the amplitude collapses).
+    const stride = (this.vx !== 0 ? 2.5 : 0);
+    const legL_dy = Math.sin(this.walkAnim) * stride;
+    const legR_dy = -legL_dy;
+    // Left leg
+    ctx.fillStyle = bodyDark;
+    roundRect(ctx, x - 10, y - 14 + legL_dy, 7, 14 - legL_dy, 2, true, true);
+    // Right leg
+    roundRect(ctx, x + 3,  y - 14 + legR_dy, 7, 14 - legR_dy, 2, true, true);
+    // Boots — darker chunky tip at the bottom of each leg for definition.
+    ctx.fillStyle = bootColor;
+    roundRect(ctx, x - 11, y - 4 + legL_dy, 9, 4, 1.5, true, false);
+    roundRect(ctx, x + 2,  y - 4 + legR_dy, 9, 4, 1.5, true, false);
+    // Torso — vertical gradient with a slight highlight at the top. The
+    // narrow-shoulder silhouette pushes the head/face to "read first."
     const torsoGrad = ctx.createLinearGradient(0, y - 36, 0, y - 12);
-    torsoGrad.addColorStop(0, bodyColor);
-    torsoGrad.addColorStop(1, bodyDark);
+    torsoGrad.addColorStop(0,    bodyHi);
+    torsoGrad.addColorStop(0.5,  bodyColor);
+    torsoGrad.addColorStop(1,    bodyDark);
     ctx.fillStyle = torsoGrad;
-    roundRect(ctx, x - 13, y - 36, 26, 24, 5, true, true);
-    // Head
-    ctx.fillStyle = '#ffd29a';
+    roundRect(ctx, x - 13, y - 36, 26, 24, 6, true, true);
+    // Chest strap — diagonal accent across the torso for character read.
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = bodyDark;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(x, y - 42, 9, 0, Math.PI * 2);
+    ctx.moveTo(x - 12, y - 26);
+    ctx.lineTo(x + 12, y - 18);
+    ctx.stroke();
+    ctx.restore();
+    // Head — slightly larger, with a soft gradient for volume.
+    const headGrad = ctx.createRadialGradient(x - 3, y - 44, 1, x, y - 42, 10);
+    headGrad.addColorStop(0, '#ffe5c3');
+    headGrad.addColorStop(1, '#d4a070');
+    ctx.fillStyle = headGrad;
+    ctx.beginPath();
+    ctx.arc(x, y - 42, 10, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
-    // Eye
+
+    // Hat band shadow on the forehead — a darker arc where the hat sits, which
+    // sells "head wearing something" instead of "ball with eye."
+    ctx.fillStyle = 'rgba(80,40,10,0.32)';
+    ctx.beginPath();
+    ctx.ellipse(x, y - 47, 10, 4, 0, 0, Math.PI, true);
+    ctx.fill();
+
+    // Explorer hat — wide brim + rounded crown. Strong distinctive silhouette
+    // that reads at canvas scale and signals "adventurer." Brim asymmetry
+    // (slightly wider on the facing side) gives the hat directional read.
+    const hatColor   = this.isP2 ? '#3a6a72' : '#6b4a2a';
+    const hatColorHi = this.isP2 ? '#5a8a92' : '#8b6a4a';
+    const hatColorDk = this.isP2 ? '#1f3a3f' : '#3a2614';
+    // Brim — wide flat ellipse.
+    ctx.fillStyle = hatColor;
+    ctx.strokeStyle = '#0a1832';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(x + this.facing * 1, y - 49, 15, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // Crown — rounded dome on top of the brim.
+    ctx.fillStyle = hatColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 7, y - 49);
+    ctx.quadraticCurveTo(x - 7, y - 58, x, y - 58);
+    ctx.quadraticCurveTo(x + 7, y - 58, x + 7, y - 49);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Crown highlight — narrow brighter band along the top-left, sells volume.
+    ctx.fillStyle = hatColorHi;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y - 52);
+    ctx.quadraticCurveTo(x - 6, y - 57, x - 1, y - 57);
+    ctx.lineTo(x - 1, y - 55);
+    ctx.quadraticCurveTo(x - 4, y - 55, x - 4, y - 51);
+    ctx.closePath();
+    ctx.fill();
+    // Hat band — accent stripe around the base of the crown.
+    ctx.fillStyle = hatColorDk;
+    ctx.fillRect(x - 7, y - 50, 14, 2);
+    // Hat feather/pin — small accent on the side, biome-agnostic so the
+    // character is identifiable in any world.
+    ctx.fillStyle = this.isP2 ? '#9be7ff' : '#ffd60a';
+    ctx.beginPath();
+    ctx.arc(x + this.facing * 5, y - 50, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Face — drawn AFTER the hat brim so the brim casts a slight shadow on
+    // the upper face (handled by the band shadow ellipse above).
+    // Big single eye — bold and readable. Position favors the facing side.
     ctx.fillStyle = '#0a1832';
-    ctx.fillRect(x + this.facing * 2, y - 44, 3, 3);
-    // Gun
-    ctx.fillStyle = '#202832';
-    ctx.fillRect(x - 3, y - 38, 6, 12);
-    ctx.fillRect(x - 2 + this.facing * 4, y - 40, 4, 6);
+    ctx.beginPath();
+    ctx.arc(x + this.facing * 2, y - 41, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye sparkle — small white dot in the upper-left of the pupil.
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x + this.facing * 2 - 0.7, y - 41.6, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    // Mouth — short curved line. Determined smirk facing the action.
+    ctx.strokeStyle = '#5a2a14';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x + this.facing * 0.5, y - 36);
+    ctx.quadraticCurveTo(x + this.facing * 3, y - 35, x + this.facing * 4.5, y - 36);
+    ctx.stroke();
+    // Nose nub — tiny shaded curve, adds character.
+    ctx.strokeStyle = 'rgba(80,40,20,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + this.facing * 4, y - 39);
+    ctx.lineTo(x + this.facing * 5, y - 37);
+    ctx.stroke();
+    // Gun / harpoon launcher — slightly redesigned with a barrel + grip.
+    ctx.fillStyle = '#2a323c';
+    ctx.strokeStyle = '#0a1832';
+    ctx.lineWidth = 1;
+    roundRect(ctx, x - 3, y - 38, 6, 13, 1.5, true, true);
+    // Barrel pointing in facing direction.
+    ctx.fillStyle = '#1a2028';
+    ctx.fillRect(x - 2 + this.facing * 4, y - 41, 4, 7);
+    // Tiny accent rim on the barrel tip — biome-agnostic gold/cyan distinction.
+    ctx.fillStyle = this.isP2 ? '#9be7ff' : '#ffd60a';
+    ctx.fillRect(x + this.facing * 7, y - 40, 2, 4);
 
     // Soft rim light on the facing side — helps the silhouette pop against
     // dark backgrounds (volcano, boss) without needing a hard outline.

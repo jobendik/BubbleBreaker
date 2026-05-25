@@ -277,12 +277,13 @@ export class Ball {
     const sqz = this.squashTime / 0.18;
     const rx = this.r * (1 + sqz * 0.28);
     const ry = this.r * (1 - sqz * 0.24);
-    // Body
+    // Body — full-radius radial gradient. Top-left light source.
     const isHex = this.type === 'hexagon';
     const grad = ctx.createRadialGradient(this.x - rx * 0.4, this.y - ry * 0.4, rx * 0.1, this.x, this.y, rx);
-    grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.25, c[0]);
-    grad.addColorStop(1, c[1]);
+    grad.addColorStop(0,    '#fff');
+    grad.addColorStop(0.18, c[0]);
+    grad.addColorStop(0.85, c[1]);
+    grad.addColorStop(1,    c[1]);
     ctx.fillStyle = grad;
     if (isHex) {
       // Six-sided polygon, rotating slowly with horizontal velocity. Jagged
@@ -297,20 +298,113 @@ export class Ball {
       }
       ctx.closePath();
       ctx.fill();
+      // Faceted shading — clip to the hex outline, then draw a dark gradient
+      // band across the bottom half so the lower faces read as in-shadow.
+      ctx.save();
+      ctx.clip();
+      const hexShade = ctx.createLinearGradient(0, this.y - ry * 0.2, 0, this.y + ry);
+      hexShade.addColorStop(0, 'rgba(0,0,0,0)');
+      hexShade.addColorStop(1, 'rgba(0,0,0,0.4)');
+      ctx.fillStyle = hexShade;
+      ctx.fillRect(this.x - rx, this.y - ry, rx * 2, ry * 2);
+      ctx.restore();
     } else {
       ctx.beginPath(); ctx.ellipse(this.x, this.y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+      // Inner shadow ring — soft dark crescent on the bottom-right, sells
+      // volume. Skip for hex (its facets already convey depth).
+      const innerGrad = ctx.createRadialGradient(
+        this.x + rx * 0.3, this.y + ry * 0.4, rx * 0.3,
+        this.x + rx * 0.3, this.y + ry * 0.4, rx,
+      );
+      innerGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      innerGrad.addColorStop(0.8, 'rgba(0,0,0,0)');
+      innerGrad.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = innerGrad;
+      ctx.beginPath(); ctx.ellipse(this.x, this.y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
     }
-    // Outline
-    ctx.strokeStyle = '#1c0010';
-    ctx.lineWidth = 2;
+    // Outline — softer than the previous hard #1c0010. Uses dark-tone of the
+    // ball's own palette so each ball "owns" its silhouette.
+    ctx.strokeStyle = c[1];
+    ctx.lineWidth = 1.5;
     ctx.stroke();
-    // Highlight (skip for hex — its angular silhouette already reads as such)
+    // Specular highlight — small bright "wet" dot, plus the larger soft
+    // primary highlight underneath. Skip for hex (no glass-ball read).
     if (!isHex) {
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      // Soft primary highlight.
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
       ctx.beginPath();
       ctx.ellipse(this.x - rx * 0.35, this.y - ry * 0.4, rx * 0.28, ry * 0.18, -0.4, 0, Math.PI * 2);
       ctx.fill();
+      // Small bright specular dot — the "glass marble" signature.
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.beginPath();
+      ctx.ellipse(this.x - rx * 0.45, this.y - ry * 0.5, rx * 0.1, ry * 0.07, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Fresnel rim — subtle bright crescent on the bottom-left edge.
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y, rx * 0.92, ry * 0.92, 0, Math.PI * 0.7, Math.PI * 1.15);
+      ctx.stroke();
+      ctx.restore();
     }
+    // ---------- Per-type material polish ----------
+    // Subtle surface-detail layered over the base gradient. These passes are
+    // intentionally faint — they enrich the material without obscuring the
+    // ball's color identity.
+    if (this.type === 'lava') {
+      // Magma cracks — a few short dark streaks that hint at a hot crust.
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = '#5a0a0a';
+      ctx.lineWidth = 1;
+      const seed = Math.floor(this.x * 0.07) + Math.floor(this.y * 0.07);
+      for (let i = 0; i < 3; i++) {
+        const a = ((seed + i * 53) % 360) * Math.PI / 180;
+        const dx = Math.cos(a) * rx * 0.55;
+        const dy = Math.sin(a) * ry * 0.55;
+        ctx.beginPath();
+        ctx.moveTo(this.x + dx, this.y + dy);
+        ctx.lineTo(this.x + dx * 0.35, this.y + dy * 0.35);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (this.type === 'smoke') {
+      // Wispy outer halo — three soft rings of decreasing alpha to fake a
+      // diffuse, smoke-cloaked edge without using filters.
+      ctx.save();
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = 0.12 - i * 0.03;
+        ctx.fillStyle = '#aab0b8';
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y, rx + 3 + i * 4, ry + 3 + i * 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (this.type === 'sludge') {
+      // Slime sheen — bright green highlight band on the side.
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#caf580';
+      ctx.beginPath();
+      ctx.ellipse(this.x - rx * 0.2, this.y - ry * 0.15, rx * 0.6, ry * 0.25, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (this.type === 'armored') {
+      // Metal plate seam — single horizontal scratch line that catches light.
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(this.x - rx * 0.55, this.y - ry * 0.15);
+      ctx.lineTo(this.x + rx * 0.5,  this.y - ry * 0.1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // Flashing micro-ball marker (Panic mode) — strobing white ring around the
     // ball. Visible only at size 0 since that's the ball the player must pop
     // to trigger the time-stop reward.

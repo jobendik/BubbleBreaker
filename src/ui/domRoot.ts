@@ -32,6 +32,7 @@ import { buildGameOver, syncGameOver } from './screens/gameOver.html';
 import { buildLevelClear, syncLevelClear, buildBossDefeated, buildVictory, syncVictory } from './screens/levelClear.html';
 import { buildHUD, syncHUD } from './hud/hud.html';
 import { buildTouchControls } from './hud/touchControls.html';
+import { AudioSys } from '../systems/audio';
 import { initEffects } from './overlay/effects';
 import type { Game } from '../game';
 
@@ -104,6 +105,7 @@ class UIRoot {
 
     if (game.state !== this.lastState) {
       document.body.dataset.state = game.state;
+      AudioSys.syncMusicForState(game.state);
       this.lastState = game.state;
       const next = this.screens.find(s => s.state === game.state) ?? null;
       if (next !== this.activeScreen) {

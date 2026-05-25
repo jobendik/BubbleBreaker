@@ -81,6 +81,18 @@ npm run build && npm run preview
 
 The CrazyGames SDK is loaded from `index.html` via the official CDN. Local dev runs without it (every SDK call no-ops); the in-game console will simply show `sdk.init.done { hasSDK: false }`.
 
+## GitHub Pages
+
+The app is configured for GitHub Pages with relative asset paths, so the same production build works for both project pages and user pages without hard-coding a repository name.
+
+To publish it:
+
+1. Push to the `main` branch.
+2. In GitHub, open Settings -> Pages.
+3. Set Source to `GitHub Actions`.
+
+The workflow in `.github/workflows/deploy-pages.yml` will build `dist/` and deploy it automatically.
+
 ## Status
 
 Genuinely launch-ready for the CrazyGames Basic Launch pipeline. Remaining work is operational rather than in-engine: thumbnail/capsule art, real-device QA at iframe sizes 907×510 → 1366×768, listing copy submission, and review-feedback iteration. See [LAUNCH.md](LAUNCH.md) for the full release-candidate checklist.

@@ -1,3 +1,4 @@
+import { State, type GameState } from '../constants';
 import { Storage } from './storage';
 
 declare global {
@@ -52,6 +53,15 @@ const MUSIC_BASE = `${import.meta.env.BASE_URL}music/`;
 let _musicEl: HTMLAudioElement | null = null;
 let _musicCurrent: string | null = null;
 
+const GAMEPLAY_MUSIC_STATES = new Set<GameState>([
+  State.PLAYING,
+  State.PLAYER_DEAD,
+  State.LEVEL_CLEAR,
+  State.GAME_OVER,
+  State.BOSS_DEFEATED,
+  State.VICTORY,
+]);
+
 function _loadOne(ctx: AudioContext, id: string): Promise<AudioBuffer | null> {
   const cached = _buffers.get(id);
   if (cached) return Promise.resolve(cached);
@@ -100,9 +110,9 @@ export const AudioSys = {
     this.master.connect(this.ctx.destination);
     // Fire-and-forget Tier-S preload. Procedural fallback covers anything not ready.
     for (const id of TIER_S_PRELOAD) _loadOne(this.ctx, id);
-    // Start the default music loop. First user gesture (the same one that
+    // Start the default menu loop. First user gesture (the same one that
     // unlocked the audio context above) lets the browser autoplay it.
-    this.musicPlay('menu_loop');
+    this.musicPlay('main_menu_music');
   },
   toggle() {
     this.muted = !this.muted;
@@ -137,6 +147,20 @@ export const AudioSys = {
       _musicEl.src = `${MUSIC_BASE}${id}.mp3`;
     }
     this._musicSync();
+  },
+  /** Route background music from the current game state.
+   *  Pause owns its own loop; active gameplay states share the gameplay loop;
+   *  everything else uses the main-menu loop. */
+  syncMusicForState(state: GameState) {
+    if (state === State.PAUSED) {
+      this.musicPlay('pause_menu_music');
+      return;
+    }
+    if (GAMEPLAY_MUSIC_STATES.has(state)) {
+      this.musicPlay('game_music');
+      return;
+    }
+    this.musicPlay('main_menu_music');
   },
   /** Reconcile music playback with current mute + duck state. Called from
    *  init/toggle/duck/unduck so the same gate covers every transition. */

@@ -8,6 +8,7 @@ import { emit, installErrorHandlers } from './systems/analytics';
 import { captureWelcomeBack, setUsername } from './systems/daily';
 import { earnedTitles, markTitlesSeen } from './systems/titles';
 import { State } from './constants';
+import { UI } from './ui/domRoot';
 
 // Wire global error handlers as early as possible so a bug during the rest of
 // boot still gets reported.
@@ -89,6 +90,10 @@ Platform.init().then(() => {
 const game = new Game();
 game.unlockedLevel = Storage.data.unlockedLevel || 0;
 bindCanvasInput(game.canvas);
+// Build the HTML/CSS UI overlay (#ui-root) and register its screens. From
+// here on, game.render() also calls UI.syncFrame() so the overlay tracks
+// state/theme changes and the active screen runs its per-frame sync.
+UI.init(game);
 
 // First-ever visit: skip the menu and drop the player straight into Level 1.
 const isFirstVisit = !Storage.data.unlockedLevel

@@ -3,6 +3,7 @@ import { drawBackground, roundRect } from '../rendering/canvas';
 import { AudioSys } from '../systems/audio';
 import { consumeAnyConfirm, consumePressed, pointer, pointerHit } from '../systems/input';
 import { Storage } from '../systems/storage';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 const MODE_ITEMS = [
@@ -40,6 +41,7 @@ export function updateModeSelect(game: Game) {
 }
 
 export function renderModeSelect(game: Game) {
+  if (UI.isHandledByHtml(State.MODE_SELECT)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'desert', game.t);
   ctx.font = 'bold 48px sans-serif';

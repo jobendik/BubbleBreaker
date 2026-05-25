@@ -5,6 +5,7 @@ import { AudioSys } from '../systems/audio';
 import { consumeAnyConfirm, consumePressed } from '../systems/input';
 import { Storage } from '../systems/storage';
 import { earnedTitles, lockedTitles } from '../systems/titles';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 /** Generic "press anything to go back to the menu" handler shared by all info screens. */
@@ -21,6 +22,7 @@ export function updateControls(game: Game) {
 }
 
 export function renderControls(game: Game) {
+  if (UI.isHandledByHtml(State.CONTROLS)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'beach', game.t);
   ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center';
@@ -129,6 +131,7 @@ export function updateHighScores(game: Game) {
 }
 
 export function renderHighScores(game: Game) {
+  if (UI.isHandledByHtml(State.HIGH_SCORES)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'city', game.t);
   ctx.font = 'bold 46px sans-serif';
@@ -196,6 +199,7 @@ export function updateCredits(game: Game) {
 }
 
 export function renderCredits(game: Game) {
+  if (UI.isHandledByHtml(State.CREDITS)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'arctic', game.t);
   ctx.font = 'bold 40px sans-serif'; ctx.textAlign = 'center';
@@ -238,6 +242,7 @@ function formatTime(ms: number): string {
 }
 
 export function renderStats(game: Game) {
+  if (UI.isHandledByHtml(State.STATS)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'volcano', game.t);
   // Translucent panel so stats are readable against the volcano sky.

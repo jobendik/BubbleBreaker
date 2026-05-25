@@ -20,6 +20,7 @@ import { pickDailyChallenge, type DailyPick } from './systems/daily';
 // Aliased to Sdk to avoid colliding with the `Platform` entity class above.
 import { Platform as Sdk } from './systems/platform';
 import { clamp, rand, randi } from './utils';
+import { UI } from './ui/domRoot';
 
 // State-handler modules. Each owns its own update() and render() entry points.
 import { updateMainMenu,    renderMainMenu }                     from './state/mainMenu';
@@ -661,5 +662,10 @@ export class Game {
     // After all state-specific renders had a chance to call pointerOver(),
     // emit a single hover SFX if the cursor crossed onto a new button.
     flushHoverSound();
+
+    // Sync the HTML/CSS overlay: flips visible screen on state change,
+    // re-tints biome palette tokens, and runs the active screen's
+    // per-frame update (cheap; guarded writes only on changed values).
+    UI.syncFrame(this);
   }
 }

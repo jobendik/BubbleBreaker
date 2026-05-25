@@ -3,6 +3,7 @@ import { roundRect } from '../rendering/canvas';
 import { AudioSys } from '../systems/audio';
 import { consumePressed, isTouchDevice, pointer, pointerHit, pointerOver } from '../systems/input';
 import { Storage } from '../systems/storage';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 export interface PauseButton {
@@ -82,6 +83,7 @@ export function updatePaused(game: Game) {
 }
 
 export function renderPause(game: Game) {
+  if (UI.isHandledByHtml(State.PAUSED)) return;
   const ctx = game.ctx;
   ctx.fillStyle = 'rgba(0,0,0,0.78)';
   ctx.fillRect(0, 0, W, H);

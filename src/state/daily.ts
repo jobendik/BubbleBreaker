@@ -5,6 +5,7 @@ import { AudioSys } from '../systems/audio';
 import { hasPlayedToday, liveStreak, pickDailyChallenge, todayUTC } from '../systems/daily';
 import { consumeAnyConfirm, consumePressed, pointer, pointerHit, pointerOver } from '../systems/input';
 import { Storage } from '../systems/storage';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 // ---------- Daily Challenge: intro screen ----------
@@ -41,6 +42,7 @@ export function updateDailyIntro(game: Game) {
 }
 
 export function renderDailyIntro(game: Game) {
+  if (UI.isHandledByHtml(State.DAILY_INTRO)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'boss', game.t);
   const pick = game.daily ?? pickDailyChallenge();
@@ -214,6 +216,7 @@ export function copyDailyShareText(game: Game) {
 }
 
 export function renderDailyResult(game: Game) {
+  if (UI.isHandledByHtml(State.DAILY_RESULT)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'boss', game.t);
   const pick = game.daily ?? pickDailyChallenge();

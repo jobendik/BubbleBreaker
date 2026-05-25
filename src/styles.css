@@ -1,61 +1,7 @@
-/* Minimal page styling - all game UI is rendered to the canvas */
-html, body {
-  margin: 0; padding: 0;
-  width: 100%; height: 100%;
-  background: #000;
-  overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-  color: #fff;
-  -webkit-user-select: none; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
-}
-#wrap {
-  width: 100vw; height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-}
-canvas {
-  background: #07101e;
-  image-rendering: auto;
-  box-shadow: 0 0 30px rgba(0, 200, 255, 0.18);
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
-  display: block;
-  touch-action: none;
-}
-
-/* Portrait orientation prompt — shown only on small portrait screens. */
-#rotate-prompt {
-  position: fixed;
-  inset: 0;
-  background: #07101e;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  text-align: center;
-  padding: 24px;
-}
-#rotate-prompt .rotate-icon {
-  font-size: 96px;
-  color: #ffd60a;
-  animation: rotate-hint 1.6s ease-in-out infinite;
-  margin-bottom: 24px;
-}
-#rotate-prompt .rotate-text {
-  font-size: 20px;
-  color: #fff;
-  max-width: 320px;
-  line-height: 1.4;
-}
-@keyframes rotate-hint {
-  0%, 100% { transform: rotate(0deg); }
-  50%      { transform: rotate(90deg); }
-}
-
-/* Show the prompt on touch devices in portrait orientation only. */
-@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
-  #rotate-prompt { display: flex; }
-  #wrap { display: none; }
-}
+/* Style entry point. Real rules live in src/styles/*. Order matters:
+   tokens → base → screens → hud → effects (so cascade lands cleanly). */
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/screens.css';
+@import './styles/hud.css';
+@import './styles/effects.css';

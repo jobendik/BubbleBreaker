@@ -1,0 +1,357 @@
+/* =====================================================================
+   Base layout: wrap, stage, canvas, ui-root.
+
+   The stage is the 16:9 letterboxed box that holds both the canvas and the
+   HTML UI overlay. They share one box so the overlay's anchored layouts
+   line up with on-canvas content. Container queries on the stage make
+   every font/size scale proportionally with the box — identical
+   readability on a 1366×768 iframe and a phone in landscape.
+   ===================================================================== */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #04060a;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  color: var(--paper);
+  -webkit-user-select: none;
+          user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#wrap {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Outer page ambience — a very subtle radial light so the letterboxed
+     edges don't feel like a hard cutoff in fullscreen embeds. */
+  background:
+    radial-gradient(ellipse at 50% 50%, #0d1a2e 0%, #04060a 65%),
+    #000;
+}
+
+#stage {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  container-type: size;
+  background: #07101e;
+  border-radius: clamp(0px, 1cqi, 14px);
+  /* Premium chrome: layered shadow + inner highlight so the stage reads as
+     a piece of hardware against the page, not a flat canvas. */
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(0, 0, 0, 0.55),
+    0 30px 80px -16px rgba(0, 0, 0, 0.65),
+    0 0 80px -10px color-mix(in srgb, var(--acc) 40%, transparent);
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Soft inner-edge glow on the stage. Sits above canvas and below
+   interactive UI so it never blocks input. */
+#stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 0 40px rgba(0, 0, 0, 0.45);
+  z-index: var(--z-overlay);
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  image-rendering: auto;
+  z-index: var(--z-bg);
+}
+
+/* Hide the canvas during pure-UI states. */
+body[data-state="main_menu"]    #game,
+body[data-state="mode_select"]  #game,
+body[data-state="level_select"] #game,
+body[data-state="high_scores"]  #game,
+body[data-state="controls"]     #game,
+body[data-state="credits"]      #game,
+body[data-state="stats"]        #game,
+body[data-state="daily_intro"]  #game,
+body[data-state="daily_result"] #game,
+body[data-state="victory"]      #game {
+  visibility: hidden;
+}
+
+#ui-root {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-screen);
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* Only screens opt back into pointer events at the container level.
+   The HUD, FX overlay, and touch-controls wrappers stay non-interactive
+   (their interactive descendants — .hud__pause, .touch-btn — set
+   pointer-events: auto themselves). Targeting .ui-screen specifically
+   instead of `> *` avoids overriding the wrappers' own
+   `pointer-events: none` (specificity bug that earlier made .fx-layer
+   into a full-stage click trap at z-index 40 — see effects.css). */
+#ui-root > .ui-screen { pointer-events: auto; }
+
+/* ---- Screen container ---- */
+.ui-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3cqi, 32px);
+  box-sizing: border-box;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-base) var(--ease-out),
+              visibility 0s linear var(--dur-base);
+  font-size: var(--fs-body);
+}
+.ui-screen.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+/* ---- Shared atoms ----------------------------------------------------- */
+.ui-btn {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: var(--pad-sm) var(--pad-lg);
+  cursor: pointer;
+  position: relative;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+  box-shadow: 0 4px 0 var(--ink), 0 8px 16px rgba(0, 0, 0, 0.35);
+  font-size: var(--fs-body);
+  min-height: 44px;
+}
+.ui-btn:hover, .ui-btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--ink), 0 12px 24px rgba(0, 0, 0, 0.45);
+  outline: none;
+}
+.ui-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink), 0 3px 6px rgba(0, 0, 0, 0.45);
+}
+.ui-btn:focus-visible { outline: 3px solid var(--brand-cyan); outline-offset: 3px; }
+.ui-btn[disabled] { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+.ui-btn--ghost {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--paper);
+  border-color: color-mix(in srgb, var(--paper) 28%, transparent);
+  box-shadow: none;
+}
+.ui-btn--ghost:hover, .ui-btn--ghost:focus-visible {
+  background: var(--brand-yellow);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.ui-btn--cta {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-coral) 88%, white) 0%, var(--brand-coral) 65%, color-mix(in srgb, var(--brand-coral) 80%, black) 100%);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: clamp(12px, 2cqi, 18px) var(--pad-xl);
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2.6cqi, 1.6rem);
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 0 var(--ink), 0 14px 28px rgba(0, 0, 0, 0.45), var(--glow-acc), var(--inset-glass);
+}
+.ui-btn--cta:hover, .ui-btn--cta:focus-visible {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-yellow) 70%, white) 0%, var(--brand-yellow) 65%, color-mix(in srgb, var(--brand-yellow) 80%, black) 100%);
+  box-shadow: 0 9px 0 var(--ink), 0 18px 40px rgba(0, 0, 0, 0.55), var(--glow-yellow), var(--inset-glass);
+  transform: translateY(-3px);
+}
+.ui-btn--cta:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink), 0 4px 8px rgba(0, 0, 0, 0.4), var(--glow-acc), var(--inset-glass);
+}
+
+.ui-btn--danger {
+  background: linear-gradient(180deg, #ff7a92, var(--brand-pink));
+  color: #fff;
+  border: 2px solid var(--ink);
+  box-shadow: 0 4px 0 var(--ink), 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 18px rgba(255, 77, 109, 0.45);
+}
+.ui-btn--danger:hover, .ui-btn--danger:focus-visible {
+  background: linear-gradient(180deg, #ff97aa, #ff4d6d);
+  box-shadow: 0 6px 0 var(--ink), 0 14px 28px rgba(0, 0, 0, 0.5), 0 0 28px rgba(255, 77, 109, 0.7);
+}
+
+.ui-btn--success {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-mint) 70%, white), var(--brand-mint));
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 4px 0 var(--ink), 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 18px rgba(6, 214, 160, 0.45);
+}
+
+/* Card / panel — frosted glass with a top highlight + bottom shadow.
+   Use for every floating info block (stats, settings, results). */
+.ui-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  padding: clamp(12px, 2.4cqi, 24px);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  color: var(--paper);
+}
+
+/* Stat row — label left, value right, monospace value with a tabular feel */
+.ui-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: clamp(6px, 1cqi, 10px) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: var(--fs-body);
+}
+.ui-stat-row:last-child { border-bottom: none; }
+.ui-stat-row__label { opacity: 0.7; letter-spacing: 0.04em; font-size: var(--fs-small); text-transform: uppercase; }
+.ui-stat-row__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  color: var(--brand-yellow);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.ui-stat-row__value--best { color: var(--brand-yellow); text-shadow: 0 0 16px rgba(255, 214, 10, 0.55); }
+.ui-stat-row__value--win  { color: var(--brand-mint); }
+.ui-stat-row__value--fail { color: var(--brand-pink); }
+
+/* Chip / pill */
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid color-mix(in srgb, var(--paper) 25%, transparent);
+  color: var(--paper);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ui-chip--acc    { background: var(--acc); color: var(--ink); border-color: var(--ink); }
+.ui-chip--yellow { background: var(--brand-yellow); color: var(--ink); border-color: var(--ink); }
+.ui-chip--mint   { background: var(--brand-mint); color: var(--ink); border-color: var(--ink); }
+.ui-chip--pink   { background: var(--brand-pink); color: #fff; border-color: var(--ink); }
+
+/* Section heading used at the top of overlay screens */
+.ui-heading {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--fs-h1);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin: 0;
+  color: var(--paper);
+  text-shadow: 0 3px 0 var(--ink), 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+.ui-heading--display {
+  font-size: var(--fs-display);
+}
+.ui-heading--win {
+  background: linear-gradient(180deg, #d1ffe6, var(--brand-mint) 60%, #047a59);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: clamp(1px, 0.3cqi, 2px) var(--ink);
+  filter: drop-shadow(0 4px 0 var(--ink)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+}
+.ui-heading--fail {
+  background: linear-gradient(180deg, #ffd0d8, var(--brand-pink) 60%, #7a0a26);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: clamp(1px, 0.3cqi, 2px) var(--ink);
+  filter: drop-shadow(0 4px 0 var(--ink)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+}
+
+/* Universal "back / esc" hint footer */
+.ui-back-hint {
+  position: absolute;
+  left: 0; right: 0; bottom: clamp(8px, 1.6cqi, 18px);
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--paper);
+  opacity: 0.6;
+  pointer-events: none;
+  letter-spacing: 0.06em;
+}
+
+/* ---- Portrait orientation prompt ---- */
+#rotate-prompt {
+  position: fixed;
+  inset: 0;
+  background: #07101e;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  text-align: center;
+  padding: 24px;
+}
+#rotate-prompt .rotate-icon {
+  font-size: 96px;
+  color: var(--brand-yellow);
+  animation: rotate-hint 1.6s ease-in-out infinite;
+  margin-bottom: 24px;
+}
+#rotate-prompt .rotate-text { font-size: 20px; color: #fff; max-width: 320px; line-height: 1.4; }
+@keyframes rotate-hint {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(90deg); }
+}
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  #rotate-prompt { display: flex; }
+  #wrap          { display: none; }
+}

@@ -4,6 +4,7 @@ import { drawBackground, roundRect } from '../rendering/canvas';
 import { AudioSys } from '../systems/audio';
 import { consumeAnyConfirm, consumePressed, pointer, pointerHit } from '../systems/input';
 import { Storage } from '../systems/storage';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 // Layout constants shared by update (hit-testing) and render.
@@ -46,6 +47,7 @@ export function updateLevelSelect(game: Game) {
 }
 
 export function renderLevelSelect(game: Game) {
+  if (UI.isHandledByHtml(State.LEVEL_SELECT)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'arctic', game.t);
   ctx.font = 'bold 40px sans-serif';

@@ -6,6 +6,7 @@ import { dismissWelcomeBack, getWelcomeBackBanner, hasPlayedToday, liveStreak, t
 import { consumePressed, pointer, pointerHit, pointerOver } from '../systems/input';
 import { Storage } from '../systems/storage';
 import { currentTitle } from '../systems/titles';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 const SECONDARY = [
@@ -86,6 +87,17 @@ function openMenuAction(game: Game, key: string) {
 }
 
 export function updateMainMenu(game: Game) {
+  // When the HTML overlay owns this screen, native DOM buttons handle their
+  // own clicks and the per-frame sync runs from UI.syncFrame(). We still
+  // accept keyboard Enter/Space here as a global shortcut so a returning
+  // keyboard user can hit Enter on the page without focusing a button.
+  if (UI.isHandledByHtml(State.MAIN_MENU)) {
+    if (consumePressed('Enter') || consumePressed('Space')) {
+      AudioSys.menu();
+      game.startTour(getResumeLevel(game));
+    }
+    return;
+  }
   const layout = getMainMenuLayout();
   // Keyboard cycling: 0 = PLAY, 1 = DAILY, 2..5 = secondary buttons
   const items = 2 + layout.secondaryRects.length;
@@ -166,6 +178,11 @@ export function updateMainMenu(game: Game) {
 }
 
 export function renderMainMenu(game: Game) {
+  // HTML overlay owns this screen — canvas is hidden via body[data-state]
+  // CSS rule and there's nothing to draw here. The full canvas implementation
+  // below stays as a fallback for environments where the overlay fails to
+  // mount, until every screen is migrated and we can delete it wholesale.
+  if (UI.isHandledByHtml(State.MAIN_MENU)) return;
   const ctx = game.ctx;
   drawBackground(ctx, 'beach', game.t);
   // Title

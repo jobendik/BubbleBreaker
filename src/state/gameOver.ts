@@ -4,6 +4,7 @@ import { AudioSys } from '../systems/audio';
 import { consumeAnyInput, consumePressed, pointer, pointerHit, pointerOver } from '../systems/input';
 import { Platform as Sdk } from '../systems/platform';
 import { Storage } from '../systems/storage';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 // ---------------- PLAYER DEAD (between-deaths transition) ----------------
@@ -98,6 +99,7 @@ export function updateGameOver(game: Game) {
 }
 
 export function renderGameOver(game: Game) {
+  if (UI.isHandledByHtml(State.GAME_OVER)) return;
   const ctx = game.ctx;
   ctx.fillStyle = 'rgba(0,0,0,0.75)';
   ctx.fillRect(0, 0, W, H);

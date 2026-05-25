@@ -1,0 +1,119 @@
+/* =====================================================================
+   Design tokens for the HTML/CSS UI overlay.
+
+   All UI surfaces (menus, HUD, screens, effects) consume these variables.
+   Per-biome palettes are applied by setting `[data-theme="..."]` on <body>
+   in src/ui/domRoot.ts — components read --acc / --sky-1 / --sky-2 / --g-1
+   / --g-2 directly and re-tint automatically without per-component logic.
+
+   The biome palettes mirror THEMES in src/constants.ts so the HTML UI and
+   the canvas world share one visual identity.
+   ===================================================================== */
+
+:root {
+  /* ---- Brand & neutral ---- */
+  --brand-yellow: #ffd60a;
+  --brand-coral:  #ff7f50;
+  --brand-pink:   #ff4d6d;
+  --brand-cyan:   #9be7ff;
+  --brand-mint:   #06d6a0;
+  --brand-violet: #9e7bff;
+  --ink:          #0a1832;   /* near-black navy used for text on bright fills */
+  --ink-soft:     rgba(10, 24, 50, 0.75);
+  --paper:        #ffffff;
+  --paper-soft:   rgba(255, 255, 255, 0.78);
+  --paper-faint:  rgba(255, 255, 255, 0.45);
+  --shadow-deep:  0 24px 60px -16px rgba(0, 0, 0, 0.55);
+  --shadow-rim:   0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 0 3px rgba(0, 0, 0, 0.35);
+
+  /* ---- Biome palettes (mirror src/constants.ts THEMES) ----
+     --sky-1 / --sky-2 = gradient backdrop
+     --g-1   / --g-2   = ground / foreground accent
+     --acc             = highlight / CTA hover hue
+  */
+  --sky-1: #56cbf9;  --sky-2: #ffe0b3;
+  --g-1:   #f6d68d;  --g-2:   #caa468;
+  --acc:   #ff7f50;
+
+  /* ---- Type ----
+     Bowlby One = single-weight chunky display face for titles / headers.
+     Inter      = variable-weight grotesk for all UI / HUD / body. */
+  --font-ui:      'Inter', 'Segoe UI', 'Helvetica Neue', system-ui, -apple-system, Tahoma, Arial, sans-serif;
+  --font-display: 'Bowlby One', 'Trebuchet MS', 'Arial Black', sans-serif;
+  --fs-display:   clamp(2.4rem, 8cqi, 5.2rem);
+  --fs-h1:        clamp(1.4rem, 4cqi, 2.6rem);
+  --fs-h2:        clamp(1.1rem, 2.6cqi, 1.6rem);
+  --fs-body:      clamp(0.85rem, 1.6cqi, 1.05rem);
+  --fs-small:     clamp(0.7rem, 1.3cqi, 0.85rem);
+  --fs-micro:     clamp(0.6rem, 1.1cqi, 0.75rem);
+  --fs-mono:      clamp(0.8rem, 1.5cqi, 0.95rem);
+
+  /* ---- Spacing & geometry ---- */
+  --pad-xs: 4px;
+  --pad-sm: 8px;
+  --pad-md: 14px;
+  --pad-lg: 22px;
+  --pad-xl: 36px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* ---- Motion ---- */
+  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:   cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:    140ms;
+  --dur-base:    260ms;
+  --dur-slow:    520ms;
+  --dur-breathe: 3.2s;
+
+  /* ---- Z-index architecture ---- */
+  --z-bg:        0;
+  --z-screen:    10;
+  --z-hud:       20;
+  --z-overlay:   30;   /* pause / level clear / game over over a paused world */
+  --z-effects:   40;
+  --z-toast:     50;
+  --z-modal:     60;
+
+  /* ---- Glow / shadow primitives ---- */
+  --glow-acc:    0 0 24px color-mix(in srgb, var(--acc) 60%, transparent),
+                 0 0 6px  color-mix(in srgb, var(--acc) 90%, transparent);
+  --glow-cyan:   0 0 24px rgba(155, 231, 255, 0.55), 0 0 6px rgba(155, 231, 255, 0.8);
+  --glow-yellow: 0 0 24px rgba(255, 214, 10, 0.55),  0 0 6px rgba(255, 214, 10, 0.85);
+  --glow-pink:   0 0 24px rgba(255, 77, 109, 0.55),  0 0 6px rgba(255, 77, 109, 0.85);
+  --inset-glass: inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                 inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* ---- Per-biome theme overrides ----
+   Set on <body data-theme="..."> by the UI router. The palette swap
+   re-tints every surface that reads var(--sky-*), var(--g-*), var(--acc). */
+body[data-theme="beach"]   { --sky-1: #56cbf9; --sky-2: #ffe0b3; --g-1: #f6d68d; --g-2: #caa468; --acc: #ff7f50; }
+body[data-theme="desert"]  { --sky-1: #ff9e6b; --sky-2: #ffd9a3; --g-1: #e0a05a; --g-2: #a8602a; --acc: #ffb703; }
+body[data-theme="arctic"]  { --sky-1: #0b1e3c; --sky-2: #4a6fa5; --g-1: #dfeefd; --g-2: #a9c6df; --acc: #9be7ff; }
+body[data-theme="city"]    { --sky-1: #18233d; --sky-2: #596d91; --g-1: #4f5a66; --g-2: #202832; --acc: #ffe66d; }
+body[data-theme="volcano"] { --sky-1: #35111f; --sky-2: #bd3b22; --g-1: #3b2420; --g-2: #150a0a; --acc: #ffb703; }
+body[data-theme="airship"] { --sky-1: #153a62; --sky-2: #88c6e8; --g-1: #6c5a45; --g-2: #2f241a; --acc: #f4d35e; }
+body[data-theme="boss"]    { --sky-1: #10031c; --sky-2: #3a004d; --g-1: #2b1340; --g-2: #160922; --acc: #ff2b88; }
+
+/* ---- Reduced motion: damp transition tokens AND nuke infinite animations
+       that don't reference the duration tokens (bubble-rise, hardcoded
+       pulse-breathe on hot CTAs, etc). The selector is intentionally broad
+       — anything decorative-only on the menu becomes static. ---- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+    --dur-breathe: 0ms;
+  }
+  .bubble,
+  .menu__play,
+  .menu__daily.is-hot,
+  .menu__title-wrap,
+  .menu__welcome {
+    animation: none !important;
+  }
+}

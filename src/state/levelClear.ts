@@ -3,6 +3,7 @@ import { LEVELS } from '../data/levels';
 import { AudioSys } from '../systems/audio';
 import { consumeAnyConfirm, consumePressed } from '../systems/input';
 import { Platform as Sdk } from '../systems/platform';
+import { UI } from '../ui/domRoot';
 import type { Game } from '../game';
 
 // ---------------- LEVEL CLEAR ----------------
@@ -53,6 +54,7 @@ export function updateLevelClear(game: Game) {
 }
 
 export function renderLevelClear(game: Game) {
+  if (UI.isHandledByHtml(State.LEVEL_CLEAR)) return;
   const ctx = game.ctx;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(0, 0, W, H);
@@ -134,6 +136,7 @@ export function updateBossDefeated(game: Game, dt: number) {
 }
 
 export function renderBossDefeated(game: Game) {
+  if (UI.isHandledByHtml(State.BOSS_DEFEATED)) return;
   const ctx = game.ctx;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.fillRect(0, 0, W, H);
@@ -155,6 +158,7 @@ export function updateVictory(game: Game) {
 }
 
 export function renderVictory(game: Game) {
+  if (UI.isHandledByHtml(State.VICTORY)) return;
   const ctx = game.ctx;
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(0, 0, W, H);

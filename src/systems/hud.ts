@@ -5,8 +5,13 @@ import type { Game } from '../game';
 
 /** Translucent on-screen movement / fire / pause buttons. Renders nothing on
  *  desktop. Called from the playing-state renderer between particles and HUD
- *  so the score/timer overlay them. */
+ *  so the score/timer overlay them.
+ *
+ *  Now a no-op: src/ui/hud/touchControls.html.ts owns the DOM touch buttons.
+ *  Kept as a fallback the body of the function below — and so the import in
+ *  playing.ts doesn't break — but early-returned on all paths. */
 export function renderTouchControls(game: Game) {
+  return; // HTML overlay owns touch controls — see src/ui/hud/touchControls.html.ts
   if (!isTouchDevice) return;
   const ctx = game.ctx;
   const drawBtn = (
@@ -84,8 +89,12 @@ export function renderTouchControls(game: Game) {
 }
 
 /** Top-bar HUD: score, weapon, timer/wave, combo, lives, level name, effect
- *  chips, P2 status, boss health bar. */
+ *  chips, P2 status, boss health bar.
+ *
+ *  Now a no-op: src/ui/hud/hud.html.ts owns the DOM HUD. Kept here so the
+ *  import in playing.ts doesn't break. */
 export function renderHUD(game: Game) {
+  return; // HTML overlay owns the HUD — see src/ui/hud/hud.html.ts
   const ctx = game.ctx;
   // Top bar background
   ctx.fillStyle = 'rgba(0,0,0,0.45)';

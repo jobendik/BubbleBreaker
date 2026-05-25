@@ -5,15 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#07101e" />
     <title>Bubble Breaker Adventure</title>
+    <!-- Premium type: Bowlby One for display (one weight, ~12KB woff2),
+         Inter for UI (variable weight). preconnect lets the font request
+         start in parallel with HTML parse. font-display: swap is the
+         default for Google Fonts CSS so we never block on font load. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Inter:wght@400;500;600;700;800;900&display=swap">
     <!-- CrazyGames SDK v3. Loaded synchronously so window.CrazyGames is
          available before the (deferred) module script runs. The adapter in
          src/systems/platform.ts gracefully no-ops if the script is blocked
          or fails to load. -->
     <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
   </head>
-  <body>
+  <body data-theme="beach" data-state="boot">
     <div id="wrap">
-      <canvas id="game" width="960" height="540"></canvas>
+      <!-- #stage wraps the canvas and the HTML UI overlay so they share an
+           identical CSS box (16:9 letterboxed). Canvas renders gameplay; the
+           overlay renders all menus / HUD / screens on top in real DOM. -->
+      <div id="stage">
+        <canvas id="game" width="960" height="540"></canvas>
+        <div id="ui-root" aria-live="polite"></div>
+      </div>
     </div>
     <div id="rotate-prompt" aria-hidden="true">
       <div class="rotate-icon">⟳</div>

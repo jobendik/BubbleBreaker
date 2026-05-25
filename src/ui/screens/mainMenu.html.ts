@@ -26,6 +26,7 @@ import {
 } from '../../systems/daily';
 import { Storage } from '../../systems/storage';
 import { currentTitle } from '../../systems/titles';
+import { activeMissions, getWeeklyEvent, nextUnlockHint, weeklyBestScore } from '../../systems/retention';
 import { FX } from '../overlay/effects';
 import type { Game } from '../../game';
 
@@ -70,6 +71,7 @@ const IDLE_PERIOD = 5;
 const SECONDARY: { key: string; label: string; target: string }[] = [
   { key: 'levels',   label: 'Levels',   target: State.LEVEL_SELECT },
   { key: 'modes',    label: 'Modes',    target: State.MODE_SELECT  },
+  { key: 'profile',  label: 'Profile',  target: State.PROFILE      },
   { key: 'stats',    label: 'Stats',    target: State.STATS        },
   { key: 'controls', label: 'Controls', target: State.CONTROLS     },
   { key: 'credits',  label: 'Credits',  target: State.CREDITS      },
@@ -241,6 +243,37 @@ export function buildMainMenu(game: Game): HTMLElement {
   });
   cta.appendChild(dailyBtn);
 
+  // Weekly Panic event
+  const weeklyBtn = document.createElement('button');
+  weeklyBtn.type = 'button';
+  weeklyBtn.className = 'menu__daily menu__weekly';
+  weeklyBtn.dataset.role = 'weekly';
+  weeklyBtn.innerHTML = `
+    <div>
+      <span class="menu__daily-title" data-role="weekly-title">WEEKLY PANIC</span>
+      <span class="menu__daily-sub" data-role="weekly-sub">New target every week.</span>
+    </div>
+    <span class="menu__daily-streak" data-role="weekly-best"></span>
+    <span class="menu__daily-badge" data-role="weekly-badge">EVENT</span>
+  `;
+  weeklyBtn.addEventListener('click', () => {
+    AudioSys.menu();
+    game.startPanic();
+  });
+  cta.appendChild(weeklyBtn);
+
+  const missions = document.createElement('div');
+  missions.className = 'menu__missions';
+  missions.innerHTML = `
+    <div class="menu__missions-head">
+      <span>Daily Missions</span>
+      <b data-role="mission-stars">0 stars</b>
+    </div>
+    <div class="menu__missions-list" data-role="missions"></div>
+    <div class="menu__next-unlock" data-role="next-unlock"></div>
+  `;
+  cta.appendChild(missions);
+
   // --- Secondary nav ---
   const secondary = document.createElement('nav');
   secondary.className = 'menu__secondary';
@@ -282,6 +315,13 @@ export function buildMainMenu(game: Game): HTMLElement {
     dailySub:    dailyBtn.querySelector('[data-role="daily-sub"]')     as HTMLElement,
     dailyStreak: dailyBtn.querySelector('[data-role="daily-streak"]')  as HTMLElement,
     dailyBadge:  dailyBtn.querySelector('[data-role="daily-badge"]')   as HTMLElement,
+    weeklyBtn,
+    weeklyTitle: weeklyBtn.querySelector('[data-role="weekly-title"]') as HTMLElement,
+    weeklySub:   weeklyBtn.querySelector('[data-role="weekly-sub"]')   as HTMLElement,
+    weeklyBest:  weeklyBtn.querySelector('[data-role="weekly-best"]')  as HTMLElement,
+    missionStars: missions.querySelector('[data-role="mission-stars"]') as HTMLElement,
+    missionsList: missions.querySelector('[data-role="missions"]') as HTMLElement,
+    nextUnlock: missions.querySelector('[data-role="next-unlock"]') as HTMLElement,
     footerHint:  footer.querySelector('[data-role="footer-hint"]')     as HTMLElement,
     // Profile card refs
     profileTitle:    profile.querySelector('[data-role="profile-title"]')     as HTMLElement,
@@ -305,6 +345,8 @@ interface Refs {
   welcome: HTMLElement; welcomeTitle: HTMLElement; welcomeSub: HTMLElement;
   playBtn: HTMLElement; playLabel: HTMLElement; playSub: HTMLElement;
   dailyBtn: HTMLElement; dailySub: HTMLElement; dailyStreak: HTMLElement; dailyBadge: HTMLElement;
+  weeklyBtn: HTMLElement; weeklyTitle: HTMLElement; weeklySub: HTMLElement; weeklyBest: HTMLElement;
+  missionStars: HTMLElement; missionsList: HTMLElement; nextUnlock: HTMLElement;
   footerHint: HTMLElement;
   profileTitle: HTMLElement;
   profileLvl: HTMLElement; profileXpCur: HTMLElement; profileXpMax: HTMLElement;
@@ -375,6 +417,25 @@ export function syncMainMenu(game: Game, root: HTMLElement) {
   refs.dailyBadge.hidden  = !isHot;
   refs.dailyStreak.hidden = streak <= 0;
   if (streak > 0) setText(refs.dailyStreak, '🔥 ' + streak);
+
+  // --- Weekly Panic event ---
+  const weekly = getWeeklyEvent();
+  setText(refs.weeklyTitle, weekly.label.toUpperCase());
+  setText(refs.weeklySub, weekly.goalLabel);
+  const weekBest = weeklyBestScore();
+  setText(refs.weeklyBest, weekBest > 0 ? fmtCompact(weekBest) : 'NEW');
+
+  // --- Missions and next unlock ---
+  setText(refs.missionStars, (Storage.data.missionStars || 0) + ' stars');
+  const missionHtml = activeMissions().map(m => {
+    const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+    return `<div class="menu__mission ${m.complete ? 'is-complete' : ''}">
+      <div class="menu__mission-top"><span>${m.label}</span><b>${m.progress}/${m.target}</b></div>
+      <div class="menu__mission-bar"><span style="width:${pct}%"></span></div>
+    </div>`;
+  }).join('');
+  if (refs.missionsList.innerHTML !== missionHtml) refs.missionsList.innerHTML = missionHtml;
+  setText(refs.nextUnlock, nextUnlockHint());
 
   // --- Welcome banner ---
   const welcome = getWelcomeBackBanner();

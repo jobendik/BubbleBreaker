@@ -1,6 +1,7 @@
 import { GROUND_Y, WALL_L, WALL_R, type WeaponType } from '../constants';
 import { AudioSys } from '../systems/audio';
 import { keys } from '../systems/input';
+import { equippedPalette } from '../systems/titles';
 import { clamp } from '../utils';
 import { roundRect } from '../rendering/canvas';
 import { Projectile } from './projectile';
@@ -270,10 +271,11 @@ export class Player {
 
     // Body palette — P1 hero blue / P2 teal. Highlight/dark variants drive
     // the torso gradient and the boot/strap detail.
-    const bodyColor = this.isP2 ? '#34a0a4' : '#3a86ff';
-    const bodyDark  = this.isP2 ? '#1d646a' : '#1b4fb8';
-    const bodyHi    = this.isP2 ? '#6bd6db' : '#74b3ff';
-    const bootColor = this.isP2 ? '#0e3a3f' : '#0e2a6a';
+    const palette = this.isP2 ? null : equippedPalette().colors;
+    const bodyColor = this.isP2 ? '#34a0a4' : palette!.body;
+    const bodyDark  = this.isP2 ? '#1d646a' : palette!.bodyDark;
+    const bodyHi    = this.isP2 ? '#6bd6db' : palette!.bodyHi;
+    const bootColor = this.isP2 ? '#0e3a3f' : palette!.boot;
     ctx.strokeStyle = '#0a1832';
     ctx.lineWidth = 2;
     // Legs — walk-cycle sway offsets each leg vertically so the character
@@ -328,9 +330,9 @@ export class Player {
     // Explorer hat — wide brim + rounded crown. Strong distinctive silhouette
     // that reads at canvas scale and signals "adventurer." Brim asymmetry
     // (slightly wider on the facing side) gives the hat directional read.
-    const hatColor   = this.isP2 ? '#3a6a72' : '#6b4a2a';
-    const hatColorHi = this.isP2 ? '#5a8a92' : '#8b6a4a';
-    const hatColorDk = this.isP2 ? '#1f3a3f' : '#3a2614';
+    const hatColor   = this.isP2 ? '#3a6a72' : palette!.hat;
+    const hatColorHi = this.isP2 ? '#5a8a92' : palette!.hatHi;
+    const hatColorDk = this.isP2 ? '#1f3a3f' : palette!.hatDark;
     // Brim — wide flat ellipse.
     ctx.fillStyle = hatColor;
     ctx.strokeStyle = '#0a1832';
@@ -361,7 +363,7 @@ export class Player {
     ctx.fillRect(x - 7, y - 50, 14, 2);
     // Hat feather/pin — small accent on the side, biome-agnostic so the
     // character is identifiable in any world.
-    ctx.fillStyle = this.isP2 ? '#9be7ff' : '#ffd60a';
+    ctx.fillStyle = this.isP2 ? '#9be7ff' : palette!.accent;
     ctx.beginPath();
     ctx.arc(x + this.facing * 5, y - 50, 1.5, 0, Math.PI * 2);
     ctx.fill();
@@ -401,7 +403,7 @@ export class Player {
     ctx.fillStyle = '#1a2028';
     ctx.fillRect(x - 2 + this.facing * 4, y - 41, 4, 7);
     // Tiny accent rim on the barrel tip — biome-agnostic gold/cyan distinction.
-    ctx.fillStyle = this.isP2 ? '#9be7ff' : '#ffd60a';
+    ctx.fillStyle = this.isP2 ? '#9be7ff' : palette!.accent;
     ctx.fillRect(x + this.facing * 7, y - 40, 2, 4);
 
     // Soft rim light on the facing side — helps the silhouette pop against

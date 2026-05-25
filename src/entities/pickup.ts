@@ -1,5 +1,6 @@
 import { GROUND_Y, GRAVITY, type PickupType } from '../constants';
 import { AudioSys } from '../systems/audio';
+import { advanceMissions } from '../systems/retention';
 import { roundRect } from '../rendering/canvas';
 import { FloatingText, Shockwave } from './particle';
 import { Ball } from './ball';
@@ -79,6 +80,7 @@ export class Pickup {
   apply(player: Player, game: Game) {
     const t = this.type;
     AudioSys.pickup();
+    advanceMissions('pickup', 1);
     game.floatingTexts.push(new FloatingText(this.x, this.y - 20, '+' + t.toUpperCase(), '#ffd60a', 16));
     if (t === 'shield') player.shield = true;
     else if (t === 'life') game.lives = Math.min(game.lives + 1, 9);

@@ -90,6 +90,7 @@ body[data-state="high_scores"]  #game,
 body[data-state="controls"]     #game,
 body[data-state="credits"]      #game,
 body[data-state="stats"]        #game,
+body[data-state="profile"]      #game,
 body[data-state="daily_intro"]  #game,
 body[data-state="daily_result"] #game,
 body[data-state="victory"]      #game {
@@ -262,6 +263,16 @@ body[data-state="victory"]      #game {
 .ui-stat-row__value--best { color: var(--brand-yellow); text-shadow: 0 0 16px rgba(255, 214, 10, 0.55); }
 .ui-stat-row__value--win  { color: var(--brand-mint); }
 .ui-stat-row__value--fail { color: var(--brand-pink); }
+.ui-stat-row__value--note {
+  max-width: 58%;
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  line-height: 1.25;
+  text-align: right;
+  color: var(--paper);
+  letter-spacing: 0.02em;
+  white-space: normal;
+}
 
 /* Chip / pill */
 .ui-chip {

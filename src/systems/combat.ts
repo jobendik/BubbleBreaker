@@ -11,7 +11,8 @@ import { AudioSys } from './audio';
 import { medalFor, recordDailyAttempt } from './daily';
 import { Platform as Sdk } from './platform';
 import { Storage } from './storage';
-import { markTitlesSeen, newlyEarnedTitles } from './titles';
+import { markTitlesSeen, newlyEarnedTitles, recordTrick } from './titles';
+import { advanceMissions } from './retention';
 import { FX } from '../ui/overlay/effects';
 import { pulseScoreDelta } from '../ui/hud/hud.html';
 import type { Game } from '../game';
@@ -50,7 +51,7 @@ export function popBall(game: Game, ball: Ball, source: any) {
   // Each trick is a small bonus + small chip rendered at the ball's position.
   // Suppress while the multi-pop chain is already running so we never stack
   // a trick chip on top of an incoming chain label at the same location.
-  let trickLabel = '', trickBonus = 0, trickColor = '#9be7ff';
+  let trickLabel = '', trickBonus = 0, trickColor = '#9be7ff', trickId = '';
   const isLastBall = game.balls.filter(b => !b.dead && b !== ball).length === 0;
   const aliveTime = ball.age;
   const timeSinceWall = ball.age - ball.lastWallTime;
@@ -59,31 +60,43 @@ export function popBall(game: Game, ball: Ball, source: any) {
     : Infinity;
   // CLUTCH: last ball on a timed level, taken with under 3 seconds left.
   if (isLastBall && game.mode !== 'panic' && game.timer > 0 && game.timer < 3) {
-    trickLabel = 'CLUTCH!'; trickBonus = 150; trickColor = '#ff36c4';
+    trickLabel = 'CLUTCH!'; trickBonus = 150; trickColor = '#ff36c4'; trickId = 'clutch';
   } else if (playerDist < 90 && !ball.dead) {
     // CLOSE CALL: ball within ~90px of player's head when popped. Real skill
     // because the player chose not to retreat from a falling ball.
-    trickLabel = 'CLOSE CALL'; trickBonus = 75; trickColor = '#ff7f50';
+    trickLabel = 'CLOSE CALL'; trickBonus = 75; trickColor = '#ff7f50'; trickId = 'close_call';
   } else if (ball.floorBounces === 0 && aliveTime > 0.4) {
     // AIR POP: ball alive long enough to have hit the floor by physics, but
     // the player got it first. Excludes freshly-spawned child balls.
-    trickLabel = 'AIR POP'; trickBonus = 60; trickColor = '#9be7ff';
+    trickLabel = 'AIR POP'; trickBonus = 60; trickColor = '#9be7ff'; trickId = 'air_pop';
   } else if (timeSinceWall >= 0 && timeSinceWall < 0.35) {
     // BANK SHOT: popped within 0.35s of the ball ricocheting off a wall.
-    trickLabel = 'BANK SHOT'; trickBonus = 50; trickColor = '#06d6a0';
+    trickLabel = 'BANK SHOT'; trickBonus = 50; trickColor = '#06d6a0'; trickId = 'bank_shot';
   }
   if (trickLabel) {
     const trickGained = Math.round(trickBonus * dailyMult);
     game.addScore(trickGained);
     game.runTricks++;
     Storage.data.lifetimeTricks = (Storage.data.lifetimeTricks || 0) + 1;
+    advanceMissions('trick', 1);
+    const progress = recordTrick(trickId);
     // Small chip near the ball, offset upward so it doesn't overlap the +score.
     game.floatingTexts.push(new FloatingText(ball.x, ball.y - 36, trickLabel, trickColor, 14));
+    if (progress.contract) {
+      const left = Math.max(0, progress.contract.target - progress.count);
+      if (progress.completedNow) {
+        FX.medal(progress.contract.title, progress.contract.label + ' complete', 'mythic', 'TITLE');
+        FX.toast('success', 'TRICK CONTRACT', progress.contract.title + ' unlocked');
+      } else if (left <= 3 || progress.count % 5 === 0) {
+        FX.toast('info', progress.contract.label.toUpperCase(), left + ' to ' + progress.contract.title);
+      }
+    }
   }
 
   // Lifetime pops counter — drives the Marksman title; debounced via the
   // existing Storage.save() at combo-decay save points below.
   Storage.data.lifetimePops = (Storage.data.lifetimePops || 0) + 1;
+  advanceMissions('pop', 1);
   const prevCombo = game.combo;
   game.combo++;
   game.maxCombo = Math.max(game.maxCombo, game.combo);
@@ -370,6 +383,7 @@ export function killPlayer(game: Game, player: Player, reason: DeathReason = 'un
   }
   if (game.lives <= 0) {
     emit('run.fail', { mode: game.mode, level: game.levelIndex, score: game.score, reason });
+    advanceMissions('score', 1, game.score);
     // Daily challenge: any failed run is still a logged attempt; go to the result screen.
     if (game.mode === 'daily') {
       recordDailyAttempt(game.score);
@@ -396,6 +410,8 @@ export function clearLevel(game: Game) {
   AudioSys.levelClear();
   Sdk.happytime();
   emit('level.clear', { mode: game.mode, level: game.levelIndex, score: game.score, timer: Math.max(0, Math.round(game.timer)) });
+  advanceMissions('level_clear', 1);
+  advanceMissions('score', 1, game.score);
   game.flash = 0.3;
   const timeBonus = Math.round(game.timer) * 30;
   const accuracy = game.shotsFired > 0 ? (game.shotsHit / game.shotsFired) : 0;

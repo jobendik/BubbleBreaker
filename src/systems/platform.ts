@@ -46,6 +46,7 @@ interface CrazyGamesSDK {
   user?: {
     getUser?(): Promise<CrazyGamesUser | null> | CrazyGamesUser | null;
     isUserAccountAvailable?(): boolean;
+    submitScore?(payload: { encryptedScore: string; score: number }): Promise<void> | void;
   };
 }
 
@@ -76,6 +77,7 @@ function safeGet<K extends 'game' | 'ad' | 'data' | 'user'>(name: K): CrazyGames
  *  add a safety floor so we never spam requests during rapid level cycling. */
 const MIDGAME_MIN_INTERVAL_MS = 60_000;
 let lastMidgameAdAt = 0;
+const LEADERBOARD_KEY = (import.meta.env.VITE_CG_LEADERBOARD_KEY || '').trim();
 
 // Optional listener the game registers so it can pause + mute on ad start and
 // resume + unmute on ad end. Kept decoupled so platform.ts doesn't reach into
@@ -242,6 +244,24 @@ export const Platform = {
     }
   },
 
+  /** Submit a score to CrazyGames' single game leaderboard. The feature is
+   *  invite-only on the platform and requires VITE_CG_LEADERBOARD_KEY to be
+   *  configured. When unavailable, this is a silent no-op so the same build
+   *  works for Basic Launch and local development. */
+  async submitLeaderboardScore(score: number): Promise<boolean> {
+    if (!this.ready || !this.hasSDK || !LEADERBOARD_KEY) return false;
+    if (!Number.isFinite(score) || score <= 0) return false;
+    const u = safeGet('user');
+    if (!u?.submitScore) return false;
+    try {
+      const encryptedScore = await encryptScore(score, LEADERBOARD_KEY);
+      await u.submitScore({ encryptedScore, score });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   /** Cloud save (best-effort). Always resolves. */
   async save(key: string, data: string): Promise<void> {
     const d = safeGet('data');
@@ -262,3 +282,17 @@ export const Platform = {
     }
   },
 };
+
+async function encryptScore(score: number, encryptionKey: string): Promise<string> {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const keyBytes = Uint8Array.from(atob(encryptionKey), c => c.charCodeAt(0));
+  const cryptoKey = await window.crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt']);
+  const dataBuffer = new TextEncoder().encode(String(score));
+  const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, dataBuffer);
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  let out = '';
+  for (let i = 0; i < combined.length; i++) out += String.fromCharCode(combined[i]);
+  return btoa(out);
+}

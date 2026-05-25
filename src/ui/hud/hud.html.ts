@@ -67,7 +67,7 @@ let cached = {
   bossHpRatio: -1,
   bossVisible: false,
   p2Status: '',
-  effectsKey: '',
+  effectsIds: '',
 };
 
 export function buildHUD(game: Game): HTMLElement {
@@ -305,23 +305,46 @@ export function syncHUD(game: Game) {
   }
 
   // ---- Effect chips ----
-  const effects: { label: string; cls: string }[] = [];
-  if (game.slowTime > 0)        effects.push({ label: 'SLOW '   + Math.ceil(game.slowTime),   cls: 'hud__effect--slow' });
-  if (game.freezeTime > 0)      effects.push({ label: 'FREEZE ' + Math.ceil(game.freezeTime), cls: 'hud__effect--freeze' });
-  if (game.magnetTime > 0)      effects.push({ label: 'MAGNET ' + Math.ceil(game.magnetTime), cls: 'hud__effect--magnet' });
-  if (game.comboBoostTime > 0)  effects.push({ label: 'BOOST '  + Math.ceil(game.comboBoostTime), cls: 'hud__effect--boost' });
-  if (game.player && game.player.weaponDisabled > 0) effects.push({ label: 'JAMMED ' + Math.ceil(game.player.weaponDisabled), cls: 'hud__effect--jammed' });
-  if (game.mode === 'boss_rush') effects.push({ label: 'BOSS ' + (game.bossRushCount + 1), cls: 'hud__effect--boss' });
-  const key = effects.map(e => e.label).join('|');
-  if (key !== cached.effectsKey) {
+  const effects: { id: string; label: string; cls: string; ratio: number; time?: number }[] = [];
+  if (game.slowTime > 0)        effects.push({ id: 'slow',   label: 'SLOW',   cls: 'hud__effect--slow',   ratio: game.slowTime / 5,        time: game.slowTime });
+  if (game.freezeTime > 0)      effects.push({ id: 'freeze', label: 'FREEZE', cls: 'hud__effect--freeze', ratio: game.freezeTime / 6,      time: game.freezeTime });
+  if (game.magnetTime > 0)      effects.push({ id: 'magnet', label: 'MAGNET', cls: 'hud__effect--magnet', ratio: game.magnetTime / 8,      time: game.magnetTime });
+  if (game.comboBoostTime > 0)  effects.push({ id: 'boost',  label: 'BOOST',  cls: 'hud__effect--boost',  ratio: game.comboBoostTime / 8, time: game.comboBoostTime });
+  if (game.player && game.player.weaponDisabled > 0) {
+    effects.push({ id: 'jammed', label: 'JAMMED', cls: 'hud__effect--jammed', ratio: game.player.weaponDisabled / 3, time: game.player.weaponDisabled });
+  }
+  if (game.mode === 'boss_rush') effects.push({ id: 'boss', label: 'BOSS ' + (game.bossRushCount + 1), cls: 'hud__effect--boss', ratio: 1 });
+  const ids = effects.map(e => e.id).join('|');
+  if (ids !== cached.effectsIds) {
     refs.bottom.innerHTML = '';
     for (const e of effects) {
       const chip = document.createElement('div');
       chip.className = 'hud__effect ' + e.cls;
-      chip.textContent = e.label;
+      chip.dataset.effectId = e.id;
+      const pct = Math.max(0, Math.min(1, e.ratio)) * 100;
+      chip.innerHTML = `
+        <span class="hud__effect-label">${e.label}</span>
+        ${e.time ? `<span class="hud__effect-time" data-role="effect-time">${Math.ceil(e.time)}s</span>` : ''}
+        <span class="hud__effect-bar"><span data-role="effect-bar" style="width:${pct.toFixed(0)}%"></span></span>
+      `;
       refs.bottom.appendChild(chip);
     }
-    cached.effectsKey = key;
+    cached.effectsIds = ids;
+  } else {
+    for (const e of effects) {
+      const chip = refs.bottom.querySelector<HTMLElement>(`[data-effect-id="${e.id}"]`);
+      if (!chip) continue;
+      const time = chip.querySelector<HTMLElement>('[data-role="effect-time"]');
+      if (time && e.time) {
+        const text = Math.ceil(e.time) + 's';
+        if (time.textContent !== text) time.textContent = text;
+      }
+      const bar = chip.querySelector<HTMLElement>('[data-role="effect-bar"]');
+      if (bar) {
+        const pct = (Math.max(0, Math.min(1, e.ratio)) * 100).toFixed(0) + '%';
+        if (bar.style.width !== pct) bar.style.width = pct;
+      }
+    }
   }
 }
 

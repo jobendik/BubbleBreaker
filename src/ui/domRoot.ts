@@ -24,7 +24,7 @@ import { buildModeSelect, syncModeSelect } from './screens/modeSelect.html';
 import { buildLevelSelect, syncLevelSelect } from './screens/levelSelect.html';
 import {
   buildControls, buildCredits, buildStats, syncStats,
-  buildHighScores, syncHighScores,
+  buildHighScores, syncHighScores, buildProfile, syncProfile,
 } from './screens/infoScreens.html';
 import { buildDailyIntro, syncDailyIntro, buildDailyResult, syncDailyResult } from './screens/daily.html';
 import { buildPause, syncPause } from './screens/pause.html';
@@ -32,8 +32,8 @@ import { buildGameOver, syncGameOver } from './screens/gameOver.html';
 import { buildLevelClear, syncLevelClear, buildBossDefeated, buildVictory, syncVictory } from './screens/levelClear.html';
 import { buildHUD, syncHUD } from './hud/hud.html';
 import { buildTouchControls } from './hud/touchControls.html';
-import { AudioSys } from '../systems/audio';
 import { initEffects } from './overlay/effects';
+import { AudioSys } from '../systems/audio';
 import type { Game } from '../game';
 
 interface ScreenEntry {
@@ -70,6 +70,7 @@ class UIRoot {
     this.register(State.CONTROLS,     buildControls());
     this.register(State.CREDITS,      buildCredits());
     this.register(State.STATS,        buildStats(),           syncStats);
+    this.register(State.PROFILE,      buildProfile(game),     syncProfile);
     this.register(State.HIGH_SCORES,  buildHighScores(),      syncHighScores);
     this.register(State.DAILY_INTRO,  buildDailyIntro(game),  syncDailyIntro);
     this.register(State.DAILY_RESULT, buildDailyResult(game), syncDailyResult);

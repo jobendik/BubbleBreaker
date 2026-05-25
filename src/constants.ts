@@ -55,6 +55,7 @@ export const State = {
   CONTROLS: 'controls',
   CREDITS: 'credits',
   STATS: 'stats',
+  PROFILE: 'profile',
   PLAYING: 'playing',
   PAUSED: 'paused',
   LEVEL_CLEAR: 'level_clear',

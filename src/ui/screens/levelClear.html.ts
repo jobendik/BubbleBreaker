@@ -6,6 +6,7 @@
 import { State } from '../../constants';
 import { AudioSys } from '../../systems/audio';
 import { Storage } from '../../systems/storage';
+import { activeMissions, nextUnlockHint } from '../../systems/retention';
 import type { Game } from '../../game';
 
 function confettiLayer(count = 24): HTMLElement {
@@ -67,6 +68,9 @@ export function syncLevelClear(game: Game, root: HTMLElement) {
   rows.push({ label: 'Total', value: s.total.toLocaleString(), cls: 'ui-stat-row__value--win' });
   if (s.best > 0) rows.push({ label: 'Best', value: s.best.toLocaleString(), cls: 'ui-stat-row__value--best' });
   if (s.newComboBest) rows.push({ label: 'NEW COMBO BEST', value: '!', cls: 'ui-stat-row__value--win' });
+  const missionsDone = activeMissions().filter(m => m.complete).length;
+  rows.push({ label: 'Daily Missions', value: missionsDone + ' / 3' });
+  rows.push({ label: 'Next Unlock', value: nextUnlockHint(), cls: 'ui-stat-row__value--note' });
   const html = rows.map(r => `
     <div class="ui-stat-row">
       <span class="ui-stat-row__label">${r.label}</span>

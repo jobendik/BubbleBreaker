@@ -31,6 +31,24 @@ export interface SaveData {
   bestBossRush: number;
   /** Highest number of bosses defeated in a single Boss Rush run. */
   bestBossRushCount: number;
+  /** Optional equipped title id. Empty means "auto-pick the best earned title". */
+  equippedTitleId: string;
+  /** Cosmetic palette id used by Player 1. */
+  playerPaletteId: string;
+  /** Per-trick counters. Keys are trick ids from systems/titles.ts. */
+  trickStats: Record<string, number>;
+  /** Best Panic score successfully queued for CrazyGames leaderboard submit. */
+  leaderboardPanicSubmitted: number;
+  /** UTC day that owns the current mission roll. */
+  missionDay: string;
+  /** Current mission progress by mission id. */
+  missionStates: Record<string, { id: string; progress: number; claimed: boolean }>;
+  /** Spend-free progression currency earned from missions and weekly events. */
+  missionStars: number;
+  /** Best Panic score for each weekly event id. */
+  weeklyPanicBest: Record<string, number>;
+  /** Week id whose weekly reward has already been granted. */
+  weeklyRewardClaimed: string;
 }
 
 const KEY_V1 = 'bba_save_v1';
@@ -60,6 +78,15 @@ function createDefaultSave(): SaveData {
     seenTitleIds: '',
     bestBossRush: 0,
     bestBossRushCount: 0,
+    equippedTitleId: '',
+    playerPaletteId: 'classic',
+    trickStats: {},
+    leaderboardPanicSubmitted: 0,
+    missionDay: '',
+    missionStates: {},
+    missionStars: 0,
+    weeklyPanicBest: {},
+    weeklyRewardClaimed: '',
   };
 }
 
@@ -97,6 +124,36 @@ function mergeProgress(local: SaveData, cloud: Partial<SaveData>): SaveData {
   if (cloud.lifetimePlayMs != null)  out.lifetimePlayMs  = Math.max(local.lifetimePlayMs || 0,  cloud.lifetimePlayMs);
   if (cloud.bestBossRush != null)    out.bestBossRush    = Math.max(local.bestBossRush || 0,    cloud.bestBossRush);
   if (cloud.bestBossRushCount != null) out.bestBossRushCount = Math.max(local.bestBossRushCount || 0, cloud.bestBossRushCount);
+  if (cloud.leaderboardPanicSubmitted != null) {
+    out.leaderboardPanicSubmitted = Math.max(local.leaderboardPanicSubmitted || 0, cloud.leaderboardPanicSubmitted);
+  }
+  if (cloud.missionStars != null) out.missionStars = Math.max(local.missionStars || 0, cloud.missionStars || 0);
+  if (cloud.weeklyPanicBest) {
+    const merged = { ...(local.weeklyPanicBest || {}) };
+    for (const k in cloud.weeklyPanicBest) merged[k] = Math.max(merged[k] || 0, cloud.weeklyPanicBest[k] || 0);
+    out.weeklyPanicBest = merged;
+  }
+  if (cloud.weeklyRewardClaimed && cloud.weeklyRewardClaimed > (local.weeklyRewardClaimed || '')) {
+    out.weeklyRewardClaimed = cloud.weeklyRewardClaimed;
+  }
+  if (cloud.missionDay) {
+    if (cloud.missionDay > (local.missionDay || '')) {
+      out.missionDay = cloud.missionDay;
+      out.missionStates = cloud.missionStates || {};
+    } else if (cloud.missionDay === local.missionDay && cloud.missionStates) {
+      const merged = { ...(local.missionStates || {}) };
+      for (const id in cloud.missionStates) {
+        const c = cloud.missionStates[id];
+        const l = merged[id];
+        merged[id] = {
+          id,
+          progress: Math.max(l?.progress || 0, c?.progress || 0),
+          claimed: !!(l?.claimed || c?.claimed),
+        };
+      }
+      out.missionStates = merged;
+    }
+  }
   // Title-seen set: union, so the unlock toast doesn't re-fire on a new device
   // for titles the player has already seen elsewhere.
   if (cloud.seenTitleIds) {
@@ -128,8 +185,15 @@ function mergeProgress(local: SaveData, cloud: Partial<SaveData>): SaveData {
     for (const k in cloud.dailyBest) merged[k] = Math.max(merged[k] || 0, cloud.dailyBest[k]);
     out.dailyBest = merged;
   }
+  if (cloud.trickStats) {
+    const merged = { ...(local.trickStats || {}) };
+    for (const k in cloud.trickStats) merged[k] = Math.max(merged[k] || 0, cloud.trickStats[k] || 0);
+    out.trickStats = merged;
+  }
   // Sticky one-time flags: if either side has fired the celebration, keep it.
   if (cloud.firstPopCelebrated) out.firstPopCelebrated = true;
+  if (typeof cloud.equippedTitleId === 'string') out.equippedTitleId = cloud.equippedTitleId;
+  if (typeof cloud.playerPaletteId === 'string') out.playerPaletteId = cloud.playerPaletteId;
   // Settings (muted, reducedMotion) — prefer the cloud copy if it exists, since
   // it represents the player's most recent device preference.
   if (typeof cloud.muted === 'boolean')         out.muted         = cloud.muted;
@@ -172,6 +236,15 @@ export const Storage: {
         if (!this.data.bestTour)  this.data.bestTour  = {};
         if (!this.data.medals)    this.data.medals    = {};
         if (!this.data.dailyBest) this.data.dailyBest = {};
+        if (!this.data.trickStats) this.data.trickStats = {};
+        if (!this.data.missionStates) this.data.missionStates = {};
+        if (!this.data.weeklyPanicBest) this.data.weeklyPanicBest = {};
+        if (!this.data.playerPaletteId) this.data.playerPaletteId = 'classic';
+        if (typeof this.data.equippedTitleId !== 'string') this.data.equippedTitleId = '';
+        if (typeof this.data.leaderboardPanicSubmitted !== 'number') this.data.leaderboardPanicSubmitted = 0;
+        if (typeof this.data.missionDay !== 'string') this.data.missionDay = '';
+        if (typeof this.data.missionStars !== 'number') this.data.missionStars = 0;
+        if (typeof this.data.weeklyRewardClaimed !== 'string') this.data.weeklyRewardClaimed = '';
         return this.data;
       }
       const rawV1 = localStorage.getItem(KEY_V1);

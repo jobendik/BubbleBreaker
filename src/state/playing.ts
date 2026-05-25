@@ -5,6 +5,7 @@ import { FloatingText, Shockwave } from '../entities/particle';
 import { drawBackground, roundRect } from '../rendering/canvas';
 import { rand } from '../utils';
 import { AudioSys } from '../systems/audio';
+import { emit } from '../systems/analytics';
 import { resolveCollisions } from '../systems/collisions';
 import { renderHUD, renderTouchControls } from '../systems/hud';
 import { consumePauseTap, consumePressed, isTouchDevice, keysPressed, pointer, tickTouchInputs } from '../systems/input';
@@ -13,6 +14,8 @@ import { Storage } from '../systems/storage';
 import { clamp } from '../utils';
 import { FX } from '../ui/overlay/effects';
 import type { Game } from '../game';
+
+let onboardingHintEmitted = false;
 
 export function updatePlaying(game: Game, dt: number) {
   // Touch input: translate active touches into synthetic key state.
@@ -73,6 +76,13 @@ export function updatePlaying(game: Game, dt: number) {
   // already (Storage.save), so we don't persist on every tick — the buffer
   // flushes on level clear / death where Storage.save() is called anyway.
   Storage.data.lifetimePlayMs = (Storage.data.lifetimePlayMs || 0) + dt * 1000;
+  if (game.firstRunHintAge >= 0 && game.introTimer <= 0) {
+    game.firstRunHintAge += dt;
+    if (!onboardingHintEmitted) {
+      onboardingHintEmitted = true;
+      emit('onboarding.hint_shown', { level: game.levelIndex });
+    }
+  }
 
   // Multi-pop chain window: closes when no new pops have arrived for 180ms.
   // We emit one consolidated DOUBLE/TRIPLE/MEGA POP label at the chain
@@ -288,12 +298,13 @@ export function renderWorld(game: Game) {
   // the basic controls. Shown only until the player has popped their very
   // first ball ever (firstPopCelebrated is a sticky one-way flag in Storage).
   // Fades out smoothly after the first pop so it doesn't linger.
-  if (!Storage.data.firstPopCelebrated && game.state === State.PLAYING && game.mode === 'tour' && game.levelIndex === 0) {
+  if (!Storage.data.firstPopCelebrated && game.state === State.PLAYING && game.mode === 'tour' && game.levelIndex === 0 && game.introTimer <= 0) {
     const fadeFrom = 1.0;   // full opacity for the first second
     const hangSecs = 6.0;   // fully visible for this long
     const fadeSecs = 1.5;   // then fade out over this
-    const tIn = Math.min(1, game.t / 0.4);
-    const tOut = Math.max(0, Math.min(1, (game.t - hangSecs) / fadeSecs));
+    const age = Math.max(0, game.firstRunHintAge);
+    const tIn = Math.min(1, age / 0.4);
+    const tOut = Math.max(0, Math.min(1, (age - hangSecs) / fadeSecs));
     const alpha = fadeFrom * tIn * (1 - tOut);
     if (alpha > 0.01) {
       const w = 360, h = 56;
@@ -315,6 +326,24 @@ export function renderWorld(game: Game) {
         ctx.fillText('TAP ◀ ▶ TO MOVE   •   TAP FIRE TO POP', W/2, y + 40);
       } else {
         ctx.fillText('A / D or ← →  MOVE   •   SPACE / ↑  FIRE', W/2, y + 40);
+      }
+      const firstBall = game.balls.find(b => !b.dead);
+      if (firstBall && game.player) {
+        const pulse = 0.5 + Math.sin(age * 7) * 0.5;
+        ctx.strokeStyle = `rgba(255,214,10,${0.45 + pulse * 0.35})`;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(game.player.x, game.player.y - 46);
+        ctx.lineTo(game.player.x, CEILING_Y + 22);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(firstBall.x, firstBall.y, firstBall.r + 10 + pulse * 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ffd60a';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('POP THIS', firstBall.x, firstBall.y - firstBall.r - 18);
       }
       ctx.restore();
     }
@@ -351,4 +380,3 @@ export function renderWorld(game: Game) {
     ctx.restore();
   }
 }
-

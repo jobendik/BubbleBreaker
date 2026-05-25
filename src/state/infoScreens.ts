@@ -231,6 +231,18 @@ export function updateStats(game: Game) {
   dismissOnAnyInput(game);
 }
 
+export function updateProfile(game: Game) {
+  if (consumePressed('Escape')) {
+    AudioSys.menu();
+    game.state = State.MAIN_MENU;
+  }
+}
+
+export function renderProfile(game: Game) {
+  if (UI.isHandledByHtml(State.PROFILE)) return;
+  renderStats(game);
+}
+
 function formatTime(ms: number): string {
   if (!ms || ms < 1000) return '—';
   const totalSec = Math.floor(ms / 1000);

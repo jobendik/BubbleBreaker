@@ -6,6 +6,8 @@
 import { DEATH_REASON_TEXT, State } from '../../constants';
 import { AudioSys } from '../../systems/audio';
 import { Storage } from '../../systems/storage';
+import { activeMissions, deathTipFor, nextUnlockHint } from '../../systems/retention';
+import { emit } from '../../systems/analytics';
 import { canRewardedContinue, startRewardedContinue } from '../../state/gameOver';
 import type { Game } from '../../game';
 
@@ -21,6 +23,7 @@ export function buildGameOver(game: Game): HTMLElement {
     <div class="gameover__warning" data-role="warning">Run Ended</div>
     <h2 class="ui-heading ui-heading--display ui-heading--fail overlay-card__title">Game Over</h2>
     <p class="daily__desc" data-role="reason" hidden></p>
+    <p class="gameover__tip" data-role="tip"></p>
     <div class="overlay-card__stats" data-role="stats"></div>
     <div class="overlay-card__actions">
       <button type="button" class="ui-btn ui-btn--success" data-role="continue" hidden>▶  Watch Ad to Continue</button>
@@ -80,6 +83,9 @@ export function syncGameOver(game: Game, root: HTMLElement) {
       rows.push({ label: 'Best Run',        value: Math.max(Storage.data.bestBossRushCount || 0, game.bossRushCount) + ' bosses' });
       rows.push({ label: 'Best Score',      value: Math.max(Storage.data.bestBossRush || 0, game.score).toLocaleString() });
     }
+    const missionsDone = activeMissions().filter(m => m.complete).length;
+    rows.push({ label: 'Daily Missions', value: missionsDone + ' / 3' });
+    rows.push({ label: 'Next Unlock', value: nextUnlockHint(), cls: 'ui-stat-row__value--note' });
     const html = rows.map(r => `
       <div class="ui-stat-row">
         <span class="ui-stat-row__label">${r.label}</span>
@@ -87,6 +93,15 @@ export function syncGameOver(game: Game, root: HTMLElement) {
       </div>
     `).join('');
     if (stats.innerHTML !== html) stats.innerHTML = html;
+  }
+
+  const tip = root.querySelector<HTMLElement>('[data-role="tip"]');
+  if (tip) {
+    const text = deathTipFor(game.lastDeathReason, game);
+    if (tip.textContent !== text) {
+      tip.textContent = text;
+      emit('death.tip_shown', { mode: game.mode, reason: game.lastDeathReason || 'unknown' });
+    }
   }
 
   const cont = root.querySelector<HTMLElement>('[data-role="continue"]');

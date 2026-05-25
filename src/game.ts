@@ -17,6 +17,7 @@ import { clearLevel, explodeProjectile, killPlayer, popBall } from './systems/co
 import { consumePressed, flushHoverSound, keysPressed, pointer } from './systems/input';
 import { Storage } from './systems/storage';
 import { pickDailyChallenge, type DailyPick } from './systems/daily';
+import { advanceMissions, getWeeklyEvent, recordWeeklyPanic } from './systems/retention';
 // Aliased to Sdk to avoid colliding with the `Platform` entity class above.
 import { Platform as Sdk } from './systems/platform';
 import { clamp, rand, randi } from './utils';
@@ -29,7 +30,8 @@ import { updateLevelSelect, renderLevelSelect }                  from './state/l
 import { updateControls,    renderControls,
          updateHighScores,  renderHighScores,
          updateCredits,     renderCredits,
-         updateStats,       renderStats }                          from './state/infoScreens';
+         updateStats,       renderStats,
+         updateProfile,     renderProfile }                         from './state/infoScreens';
 import { updatePlaying,     renderWorld }                         from './state/playing';
 import { updatePaused,      renderPause }                         from './state/pause';
 import { updateLevelClear,  renderLevelClear,
@@ -157,6 +159,8 @@ export class Game {
   /** Snapshot of lifetimeMaxCombo at the start of this level/run. After the
    *  run we compare run maxCombo against this to surface NEW COMBO BEST! */
   preRunMaxCombo: number;
+  /** Age of the first-run control hint, or -1 when inactive. */
+  firstRunHintAge: number;
 
   constructor() {
     const canvas = document.getElementById('game');
@@ -249,6 +253,7 @@ export class Game {
     this.chainCy = 0;
     this.runTricks = 0;
     this.preRunMaxCombo = 0;
+    this.firstRunHintAge = -1;
   }
 
   // ============================ LIFECYCLE ============================
@@ -262,6 +267,7 @@ export class Game {
 
   startTour(levelIndex = 0) {
     this.mode = 'tour';
+    emit('mode.start', { mode: this.mode, level: levelIndex });
     this.modifier = null;
     this.lives = 3;
     this.score = 0;
@@ -271,6 +277,7 @@ export class Game {
 
   startScoreAttack() {
     this.mode = 'score_attack';
+    emit('mode.start', { mode: this.mode });
     this.modifier = null;
     this.lives = 3;
     this.score = 0;
@@ -289,12 +296,14 @@ export class Game {
 
   openDaily() {
     this.daily = pickDailyChallenge();
+    emit('daily.open', { day: this.daily.date, modifier: this.daily.modifierId });
     this.state = State.DAILY_INTRO;
   }
 
   startDaily() {
     if (!this.daily) this.daily = pickDailyChallenge();
     this.mode = 'daily';
+    emit('mode.start', { mode: this.mode, day: this.daily.date, modifier: this.daily.modifierId });
     this.modifier = this.daily.modifierId;
     this.lives = this.modifier === 'sudden_death' ? 1 : 3;
     this.score = 0;
@@ -313,6 +322,7 @@ export class Game {
     // arcade pacing instead of a single encounter that ends instantly.
     while (bossIndices.length < 3) bossIndices.push(...bossIndices);
     this.mode = 'boss_rush';
+    emit('mode.start', { mode: this.mode });
     this.modifier = null;
     this.lives = 3;
     this.score = 0;
@@ -327,6 +337,7 @@ export class Game {
 
   startPanic() {
     this.mode = 'panic';
+    emit('mode.start', { mode: this.mode, weekly: getWeeklyEvent().id });
     this.modifier = null;
     this.lives = 3;
     this.score = 0;
@@ -353,10 +364,11 @@ export class Game {
     // the intro banner header (it doesn't anymore, but order makes intent
     // obvious to a future reader).
     const best = Storage.data.bestPanicWave || 0;
+    const weekly = getWeeklyEvent();
     this.introTitle = 'PANIC MODE';
     this.introText = best > 0
-      ? 'Endless waves. Best: Wave ' + best
-      : 'Endless waves. How long can you last?';
+      ? weekly.label + ': ' + weekly.goalLabel + '\nBest: Wave ' + best
+      : weekly.label + ': ' + weekly.goalLabel + '\nHow long can you last?';
     this.introTimer = 3;
   }
 
@@ -410,6 +422,7 @@ export class Game {
     const firstEver = !Storage.data.firstPopCelebrated
       && this.mode === 'tour'
       && index === 0;
+    this.firstRunHintAge = firstEver ? 0 : -1;
 
     this.balls = L.balls.map(b => new Ball(
       b.x, b.y,
@@ -501,6 +514,9 @@ export class Game {
     }
     if (this.mode === 'panic') {
       const survivedWave = this.panicWave - 1;
+      advanceMissions('panic_wave', 1, Math.max(0, survivedWave));
+      advanceMissions('score', 1, this.score);
+      recordWeeklyPanic(this.score, Math.max(0, survivedWave));
       if (survivedWave > Storage.data.bestPanicWave) {
         Storage.data.bestPanicWave = survivedWave;
         beatSomePB = true;
@@ -510,6 +526,14 @@ export class Game {
         beatSomePB = true;
       }
       Storage.save();
+      if (this.score > (Storage.data.leaderboardPanicSubmitted || 0)) {
+        const submittedScore = this.score;
+        Sdk.submitLeaderboardScore(submittedScore).then(ok => {
+          if (!ok) return;
+          Storage.data.leaderboardPanicSubmitted = Math.max(Storage.data.leaderboardPanicSubmitted || 0, submittedScore);
+          Storage.save();
+        });
+      }
     }
     if (this.mode === 'boss_rush') {
       if (this.score > (Storage.data.bestBossRush || 0)) {
@@ -576,6 +600,7 @@ export class Game {
       case State.CONTROLS:     updateControls(this); break;
       case State.CREDITS:      updateCredits(this); break;
       case State.STATS:        updateStats(this); break;
+      case State.PROFILE:      updateProfile(this); break;
       case State.PLAYING:      updatePlaying(this, dt); break;
       case State.PAUSED:       updatePaused(this); break;
       case State.LEVEL_CLEAR:  updateLevelClear(this); break;
@@ -632,6 +657,7 @@ export class Game {
       case State.CONTROLS:     renderControls(this); break;
       case State.CREDITS:      renderCredits(this); break;
       case State.STATS:        renderStats(this); break;
+      case State.PROFILE:      renderProfile(this); break;
       case State.DAILY_INTRO:  renderDailyIntro(this); break;
       case State.DAILY_RESULT: renderDailyResult(this); break;
       case State.PLAYING:

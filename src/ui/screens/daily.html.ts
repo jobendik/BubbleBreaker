@@ -8,6 +8,10 @@ import { AudioSys } from '../../systems/audio';
 import { hasPlayedToday, liveStreak, pickDailyChallenge, todayUTC } from '../../systems/daily';
 import { Storage } from '../../systems/storage';
 import { copyDailyShareText, openDailyShareTweet } from '../../state/daily';
+import {
+  missionsBlock, weeklyBlock, xpBarBlock, syncXpBar,
+  nextBestActionBlock, almostCallout,
+} from './resultParts';
 import type { Game } from '../../game';
 
 export function buildDailyIntro(game: Game): HTMLElement {
@@ -84,6 +88,11 @@ export function buildDailyResult(game: Game): HTMLElement {
     <div class="ui-stat-row"><span class="ui-stat-row__label">Today's Best</span><span class="ui-stat-row__value" data-role="best"></span></div>
     <div class="ui-stat-row"><span class="ui-stat-row__label">Streak</span><span class="ui-stat-row__value" data-role="streak"></span></div>
     <p class="daily__desc" data-role="reason" hidden></p>
+    <div class="result-almost" data-role="almost" hidden></div>
+    <div data-role="missions"></div>
+    <div data-role="weekly"></div>
+    <div data-role="xp"></div>
+    <div data-role="nba"></div>
     <div class="daily__actions">
       <button type="button" class="ui-btn ui-btn--success" data-role="copy">Copy Result</button>
       <button type="button" class="ui-btn" data-role="tweet" style="background:#1da1f2;color:#fff;border-color:var(--ink);">Share on X</button>
@@ -130,6 +139,38 @@ export function syncDailyResult(game: Game, root: HTMLElement) {
       reason.hidden = true;
     }
   }
+
+  // "You almost…" comeback callout — turns a sub-PB run into useful feedback.
+  // Only populate once per build to avoid clobbering the layout when the player
+  // returns to the screen via state churn.
+  const almost = root.querySelector<HTMLElement>('[data-role="almost"]');
+  if (almost && !almost.dataset.populated) {
+    almost.dataset.populated = '1';
+    const cb = almostCallout(game);
+    if (cb) {
+      almost.hidden = false;
+      almost.innerHTML = '<span class="result-almost__icon">★</span> ' + cb.text;
+      almost.dataset.kind = cb.kind;
+    } else {
+      almost.hidden = true;
+    }
+  }
+
+  // Daily mission bars, weekly row, XP bar, next-best-action — same widgets
+  // as the Level Clear / Game Over screens so the daily run ends with the
+  // same "one more run" prompts (mission near-complete, XP-to-next-level, NBA).
+  const missions = root.querySelector<HTMLElement>('[data-role="missions"]');
+  if (missions && !missions.dataset.populated) { missions.innerHTML = missionsBlock(); missions.dataset.populated = '1'; }
+  const weekly = root.querySelector<HTMLElement>('[data-role="weekly"]');
+  if (weekly && !weekly.dataset.populated) { weekly.innerHTML = weeklyBlock(); weekly.dataset.populated = '1'; }
+  const xp = root.querySelector<HTMLElement>('[data-role="xp"]');
+  if (xp && !xp.dataset.populated) {
+    xp.innerHTML = xpBarBlock(game.preRunTotalXp);
+    xp.dataset.populated = '1';
+    syncXpBar(xp);
+  }
+  const nba = root.querySelector<HTMLElement>('[data-role="nba"]');
+  if (nba && !nba.dataset.populated) { nba.innerHTML = nextBestActionBlock(game); nba.dataset.populated = '1'; }
 }
 
 function setText(root: HTMLElement, role: string, value: string) {

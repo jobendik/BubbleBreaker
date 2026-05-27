@@ -14,6 +14,7 @@ import {
   earnedTitles, equipTitle, equipPalette,
 } from '../../systems/titles';
 import { activeMissions, getWeeklyEvent, nextUnlockHint, weeklyBestScore } from '../../systems/retention';
+import { themeMastery } from '../../systems/mastery';
 import { emit } from '../../systems/analytics';
 import type { Game } from '../../game';
 
@@ -198,6 +199,10 @@ export function buildProfile(game: Game): HTMLElement {
       <div class="profile-grid profile-grid--palettes" data-role="palettes"></div>
     </div>
     <div class="profile-section">
+      <div class="profile-section__title">Theme Mastery</div>
+      <div class="profile-contracts" data-role="mastery"></div>
+    </div>
+    <div class="profile-section">
       <div class="profile-section__title">Trick Contracts</div>
       <div class="profile-contracts" data-role="contracts"></div>
     </div>
@@ -286,6 +291,22 @@ export function syncProfile(_game: Game, root: HTMLElement) {
       <span class="profile-swatch" style="--c1:${p.colors.body};--c2:${p.colors.hat};--c3:${p.colors.accent}"></span>
       <span>${p.label}</span><small>${ok ? (active ? 'Equipped' : 'Unlocked') : paletteUnlockText(p.id)}</small>
     </button>`;
+  }).join('');
+
+  const mastery = root.querySelector<HTMLElement>('[data-role="mastery"]')!;
+  mastery.innerHTML = themeMastery().map(m => {
+    const pct = (m.progress * 100).toFixed(0);
+    const tally = m.totalCount > 0
+      ? `${m.goldCount}G · ${m.silverCount}S · ${m.bronzeCount}B / ${m.totalCount}`
+      : '—';
+    const right = m.tier === 3
+      ? `<b>Mastered</b>`
+      : `<b>${m.metCount} / ${m.totalCount}</b>`;
+    return `<div class="profile-contract">
+      <div class="profile-contract__top"><span>${m.label} — ${m.tierLabel}</span>${right}</div>
+      <div class="profile-contract__bar"><span style="width:${pct}%"></span></div>
+      <small>Next: ${m.nextLabel} · ${tally}</small>
+    </div>`;
   }).join('');
 
   const contracts = root.querySelector<HTMLElement>('[data-role="contracts"]')!;

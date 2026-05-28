@@ -3,6 +3,7 @@ import { LEVELS } from '../data/levels';
 import { Ball } from '../entities/ball';
 import { FloatingText, Shockwave } from '../entities/particle';
 import { drawBackground, roundRect } from '../rendering/canvas';
+import { PAL, displayFont, uiFont, inkText } from '../rendering/theme';
 import { rand } from '../utils';
 import { AudioSys } from '../systems/audio';
 import { emit } from '../systems/analytics';
@@ -273,8 +274,8 @@ export function renderWorld(game: Game) {
         ctx.beginPath();
         ctx.arc(p.x, p.y - 8, 22, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = '#06d6a0';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.fillStyle = PAL.mint;
+        ctx.font = uiFont(14, 800);
         ctx.textAlign = 'center';
         ctx.fillText('REVIVE  ' + Math.ceil(p.respawnTimer) + 's', p.x, p.y - 36);
         ctx.restore();
@@ -306,17 +307,21 @@ export function renderWorld(game: Game) {
       const x = W/2 - w/2, y = 96;
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'rgba(10,24,50,0.78)';
-      roundRect(ctx, x, y, w, h, 10, true, false);
+      // Match the HTML overlay-card chrome: navy fill, inner top highlight,
+      // accent hairline border.
+      ctx.fillStyle = 'rgba(10,24,50,0.82)';
+      roundRect(ctx, x, y, w, h, 12, true, false);
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      roundRect(ctx, x + 2, y + 2, w - 4, 10, 8, true, false);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(255,214,10,0.7)';
-      roundRect(ctx, x, y, w, h, 10, false, true);
-      ctx.font = 'bold 13px sans-serif';
-      ctx.fillStyle = '#9be7ff';
+      ctx.strokeStyle = 'rgba(255,214,10,0.65)';
+      roundRect(ctx, x, y, w, h, 12, false, true);
+      ctx.font = uiFont(12, 800);
+      ctx.fillStyle = PAL.cyan;
       ctx.textAlign = 'center';
-      ctx.fillText('HOW TO PLAY', W/2, y + 16);
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillStyle = '#ffd60a';
+      ctx.fillText('HOW TO PLAY', W/2, y + 17);
+      ctx.font = uiFont(15, 800);
+      ctx.fillStyle = PAL.yellow;
       ctx.fillText('A / D or ← →  MOVE   •   SPACE / ↑  FIRE', W/2, y + 40);
       const firstBall = game.balls.find(b => !b.dead);
       if (firstBall && game.player) {
@@ -332,9 +337,9 @@ export function renderWorld(game: Game) {
         ctx.beginPath();
         ctx.arc(firstBall.x, firstBall.y, firstBall.r + 10 + pulse * 6, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = '#ffd60a';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.fillText('POP THIS', firstBall.x, firstBall.y - firstBall.r - 18);
+        inkText(ctx, 'POP THIS', firstBall.x, firstBall.y - firstBall.r - 18, {
+          font: displayFont(15), fill: PAL.yellow, outlineWidth: 3,
+        });
       }
       ctx.restore();
     }
@@ -352,22 +357,30 @@ export function renderWorld(game: Game) {
     ctx.save();
     ctx.globalAlpha = a;
     ctx.translate(0, offsetY);
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    roundRect(ctx, W/2 - 300, H/2 - 60, 600, 120, 14, true, false);
+    const bx = W/2 - 300, by = H/2 - 60, bw = 600, bh = 120;
+    // Overlay-card chrome to match the HTML result/pause cards: deep navy
+    // fill, inner top highlight, accent hairline border, top accent bar.
+    ctx.fillStyle = 'rgba(10,24,50,0.86)';
+    roundRect(ctx, bx, by, bw, bh, 16, true, false);
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    roundRect(ctx, bx + 3, by + 3, bw - 6, 12, 10, true, false);
+    ctx.fillStyle = PAL.yellow;
+    ctx.globalAlpha = a * 0.9;
+    roundRect(ctx, bx + bw/2 - 36, by + 8, 72, 4, 2, true, false);
+    ctx.globalAlpha = a;
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(255,214,10,0.55)';
-    roundRect(ctx, W/2 - 300, H/2 - 60, 600, 120, 14, false, true);
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillStyle = '#ffd60a';
-    ctx.textAlign = 'center';
+    ctx.strokeStyle = 'rgba(255,214,10,0.6)';
+    roundRect(ctx, bx, by, bw, bh, 16, false, true);
     // Banner header: prefer introTitle when set (mode-specific framing),
-    // otherwise fall back to the level's name.
+    // otherwise fall back to the level's name. Display face + ink outline so
+    // it matches the HTML .fx-banner__title exactly.
     const bannerTitle = game.introTitle || game.levelName;
-    ctx.fillText(bannerTitle, W/2, H/2 - 25);
-    ctx.font = '18px sans-serif';
+    inkText(ctx, bannerTitle, W/2, H/2 - 18, { font: displayFont(30), fill: PAL.yellow });
+    ctx.font = uiFont(17, 700);
     ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
     const lines = game.introText.split('\n');
-    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], W/2, H/2 + 5 + i * 22);
+    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], W/2, H/2 + 16 + i * 22);
     ctx.restore();
   }
 }

@@ -1,6 +1,7 @@
 import { GROUND_Y, GRAVITY } from '../constants';
 import { clamp } from '../utils';
 import { roundRect } from '../rendering/canvas';
+import { INK } from '../rendering/theme';
 
 // ============================ HAZARD ================================
 export type HazardType = 'lava' | 'slime' | 'electric_beam' | 'boss_warning' | 'boss_beam' | 'electric_barrier' | 'flame_vent' | 'falling_rock';
@@ -51,9 +52,11 @@ export class Hazard {
       ctx.fillRect(this.x + 4, this.y + 2, this.w - 8, 2);
       ctx.globalAlpha = 1;
     } else if (this.type === 'slime') {
-      ctx.fillStyle = '#80b918';
+      // Same green family as the sludge ball that drips it, so the cause/effect
+      // reads as one material.
+      ctx.fillStyle = '#6aa82e';
       roundRect(ctx, this.x, this.y, this.w, this.h, 4, true, false);
-      ctx.fillStyle = '#a4d65e';
+      ctx.fillStyle = '#9be15d';
       ctx.fillRect(this.x + 4, this.y + 2, this.w - 8, 2);
     } else if (this.type === 'electric_beam') {
       const a = clamp(this.life / this.maxLife, 0, 1);
@@ -126,8 +129,9 @@ export class Hazard {
         ctx.restore();
       }
       ctx.fillStyle = '#5c4d46';
-      ctx.strokeStyle = '#211a18';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
       ctx.beginPath();
       ctx.moveTo(this.x + this.w * 0.2, this.y);
       ctx.lineTo(this.x + this.w * 0.85, this.y + this.h * 0.1);

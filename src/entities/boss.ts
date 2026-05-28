@@ -1,5 +1,6 @@
 import { CEILING_Y, GROUND_Y, W, WALL_L, WALL_R, type BallType } from '../constants';
 import { AudioSys } from '../systems/audio';
+import { INK } from '../rendering/theme';
 import { rand, randi } from '../utils';
 import { Ball } from './ball';
 import { Hazard } from './hazard';
@@ -138,36 +139,113 @@ export class Boss {
 
   draw(ctx) {
     if (this.dead) return;
-    // Saucer
+    const r = this.r;
+    const now = performance.now();
     ctx.save();
     ctx.translate(this.x, this.y);
-    if (this.flash > 0) ctx.filter = 'brightness(2)';
-    // Lower hull
-    ctx.fillStyle = '#5a3a8a';
+    ctx.lineJoin = 'round';
+    if (this.flash > 0) ctx.filter = 'brightness(1.9)';
+
+    // Phase aura — a pulsing menace ring that intensifies in later phases.
+    if (this.phase >= 2) {
+      const pa = (this.phase === 3 ? 0.3 : 0.18) * (0.6 + Math.abs(Math.sin(now / 300)) * 0.4);
+      ctx.save();
+      ctx.globalAlpha = pa;
+      ctx.strokeStyle = '#ff2b88';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.05, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // Hover glow beneath the saucer.
+    const glow = ctx.createRadialGradient(0, r * 0.5, 4, 0, r * 0.5, r * 1.1);
+    glow.addColorStop(0, 'rgba(255,43,136,0.5)');
+    glow.addColorStop(1, 'rgba(255,43,136,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.ellipse(0, r * 0.55, r * 0.9, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Twin thruster flames.
+    const flick = 6 + Math.sin(now / 60) * 4;
+    for (const sx of [-r * 0.62, r * 0.62]) {
+      ctx.fillStyle = '#ffd60a';
+      ctx.beginPath();
+      ctx.moveTo(sx - 6, r * 0.26); ctx.lineTo(sx + 6, r * 0.26); ctx.lineTo(sx, r * 0.26 + flick);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff8ad0';
+      ctx.beginPath();
+      ctx.moveTo(sx - 3, r * 0.26); ctx.lineTo(sx + 3, r * 0.26); ctx.lineTo(sx, r * 0.26 + flick * 0.6);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Side pods — menace fins flanking the hull.
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = '#4a2f7a';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(sx * r * 0.82, 4, r * 0.15, r * 0.24, sx * 0.45, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
+
+    // Lower hull — wide cel-shaded metallic disc with the shared ink outline.
+    const hull = ctx.createLinearGradient(0, -r * 0.1, 0, r * 0.5);
+    hull.addColorStop(0, '#8a5fc4');
+    hull.addColorStop(0.5, '#5a3a8a');
+    hull.addColorStop(1, '#2e1b52');
+    ctx.fillStyle = hull;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(0, 8, r, r * 0.46, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    // Rim lights chasing around the disc.
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const lx = Math.cos(a) * r * 0.82, ly = 8 + Math.sin(a) * r * 0.38;
+      const on = Math.sin(now / 200 + i) > 0;
+      ctx.fillStyle = on ? '#ffd60a' : 'rgba(255,43,136,0.65)';
+      ctx.beginPath(); ctx.arc(lx, ly, 2.4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Dome — glowing pink canopy, ink outline + glass highlight.
+    const dome = ctx.createLinearGradient(0, -r * 0.5, 0, 2);
+    dome.addColorStop(0, '#ff8ac4');
+    dome.addColorStop(1, '#ff2b88');
+    ctx.fillStyle = dome;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(0, -4, r * 0.58, r * 0.46, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.22, -16, r * 0.16, r * 0.1, -0.3, 0, Math.PI * 2); ctx.fill();
+
+    // Angry brows.
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.ellipse(0, 10, this.r, this.r * 0.45, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#1c0033'; ctx.lineWidth = 3; ctx.stroke();
-    // Dome
-    ctx.fillStyle = '#ff2b88';
-    ctx.beginPath();
-    ctx.ellipse(0, -10, this.r * 0.55, this.r * 0.4, 0, Math.PI, 0);
-    ctx.fill();
+    ctx.moveTo(-12, -15); ctx.lineTo(-3, -10);
+    ctx.moveTo(12, -15); ctx.lineTo(3, -10);
     ctx.stroke();
-    // Glass
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(-this.r * 0.2, -14, this.r * 0.15, this.r * 0.12, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Eye / weak point
+
+    // Weak-point core eye — ink socket, glowing iris, vertical slit pupil.
+    const pulse = 0.6 + Math.abs(Math.sin(now / 240)) * 0.4;
+    ctx.fillStyle = INK;
+    ctx.beginPath(); ctx.arc(0, -3, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.globalAlpha = 0.45 * pulse;
     ctx.fillStyle = '#ffd60a';
-    ctx.beginPath();
-    ctx.arc(0, -4, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(0, -4, 3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -3, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    const iris = ctx.createRadialGradient(-1, -4, 1, 0, -3, 9);
+    iris.addColorStop(0, '#fff');
+    iris.addColorStop(0.35, '#ffd60a');
+    iris.addColorStop(1, '#ff7b00');
+    ctx.fillStyle = iris;
+    ctx.beginPath(); ctx.arc(0, -3, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = INK;
+    ctx.beginPath(); ctx.ellipse(0, -3, 2.3, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(-2.6, -6, 1.6, 0, Math.PI * 2); ctx.fill();
+
     ctx.filter = 'none';
     ctx.restore();
   }

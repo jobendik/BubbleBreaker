@@ -1,4 +1,5 @@
 import { clamp } from '../utils';
+import { INK, displayFont, uiFont } from '../rendering/theme';
 
 // ============================ PARTICLES =============================
 export class Particle {
@@ -61,10 +62,15 @@ export class FloatingText {
   life: number;
   maxLife: number;
   dead: boolean;
-  constructor(x, y, text, color = '#fff', size = 22) {
+  /** 'display' = Bowlby One (punchy labels: combos, +score), 'ui' = Inter
+   *  (descriptive sentences). Matches the HTML overlay's split so in-world
+   *  text reads in the same faces as the menus / HUD. */
+  face: 'display' | 'ui';
+  constructor(x, y, text, color = '#fff', size = 22, face: 'display' | 'ui' = 'display') {
     this.x = x; this.y = y; this.text = text; this.color = color;
     this.size = size; this.life = 1.0; this.maxLife = 1.0;
     this.dead = false;
+    this.face = face;
   }
   update(dt) {
     this.y -= 40 * dt;
@@ -80,13 +86,18 @@ export class FloatingText {
     ctx.translate(this.x, this.y);
     ctx.scale(pop, pop);
     ctx.globalAlpha = a;
-    ctx.font = `bold ${this.size}px sans-serif`;
+    // Brand faces (not raw sans-serif) so combo / score / banner text matches
+    // the HTML .fx-* labels exactly. Ink outline (not pure black) keeps the
+    // whole game's text on one palette.
+    ctx.font = this.face === 'ui' ? uiFont(this.size, 800) : displayFont(this.size);
     ctx.textAlign = 'center';
-    // Soft drop shadow for depth
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
+    // Soft drop shadow for depth.
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillText(this.text, 1, 2);
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#000';
+    ctx.lineWidth = Math.max(3, this.size * 0.16);
+    ctx.strokeStyle = INK;
     ctx.strokeText(this.text, 0, 0);
     ctx.fillStyle = this.color;
     ctx.fillText(this.text, 0, 0);

@@ -318,12 +318,12 @@ body[data-state="victory"]      #game {
   filter: drop-shadow(0 4px 0 var(--ink)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
 }
 .ui-heading--fail {
-  background: linear-gradient(180deg, #ffd0d8, var(--brand-pink) 60%, #7a0a26);
+  background: linear-gradient(180deg, #ffd0d8, var(--brand-pink) 60%, #c41040);
   -webkit-background-clip: text;
           background-clip: text;
   color: transparent;
-  -webkit-text-stroke: clamp(1px, 0.3cqi, 2px) var(--ink);
-  filter: drop-shadow(0 4px 0 var(--ink)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+  -webkit-text-stroke: clamp(1px, 0.3cqi, 2px) #6a0020;
+  filter: drop-shadow(0 4px 0 #6a0020) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
 }
 
 /* Universal "back / esc" hint footer */

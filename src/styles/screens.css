@@ -1059,6 +1059,9 @@
     0 0 40px rgba(255, 77, 109, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   animation: card-drop 500ms var(--ease-out) both, alarm-pulse 2.4s ease-in-out infinite;
+  gap: clamp(4px, 0.9cqi, 9px);
+  padding: clamp(10px, 2cqi, 20px);
+  overflow-y: hidden;
 }
 @keyframes alarm-pulse {
   0%, 100% { box-shadow: var(--shadow-deep), 0 0 40px rgba(255, 77, 109, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18); }

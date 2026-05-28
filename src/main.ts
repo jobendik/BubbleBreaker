@@ -9,11 +9,18 @@ import { captureWelcomeBack, setUsername } from './systems/daily';
 import { earnedTitles, markTitlesSeen } from './systems/titles';
 import { State } from './constants';
 import { UI } from './ui/domRoot';
+import { loadFonts } from './rendering/theme';
 
 // Wire global error handlers as early as possible so a bug during the rest of
 // boot still gets reported.
 installErrorHandlers();
 emit('boot.start');
+
+// Force the two brand webfonts (Bowlby One / Inter) resident up front so the
+// canvas layer renders in the same faces as the HTML UI from frame one — even
+// for a first-time visitor who is dropped straight into Level 1, skipping the
+// menu that would otherwise warm the cache.
+loadFonts();
 
 const hydrationStart = performance.now();
 Storage.load();

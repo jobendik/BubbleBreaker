@@ -125,7 +125,7 @@ export function popBall(game: Game, ball: Ball, source: any) {
       Storage.data.firstPopCelebrated = true;
       Storage.save();
       game.floatingTexts.push(new FloatingText(W/2, H/2 - 30, 'FIRST POP!', '#ffd60a', 56));
-      game.floatingTexts.push(new FloatingText(W/2, H/2 + 14, 'nice — keep popping', '#fff', 18));
+      game.floatingTexts.push(new FloatingText(W/2, H/2 + 14, 'nice — keep popping', '#fff', 18, 'ui'));
       // Bigger, brighter shockwave centered on the ball + a softer one in the
       // middle of the screen so the moment reads from anywhere on the canvas.
       game.shockwaves.push(new Shockwave(ball.x, ball.y, 160, '#ffd60a', 0.55));

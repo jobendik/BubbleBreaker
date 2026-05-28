@@ -1,8 +1,42 @@
 import { CEILING_Y, WALL_L, WALL_R } from '../constants';
 import { clamp, rand } from '../utils';
+import { roundRect } from '../rendering/canvas';
+import { INK, PAL } from '../rendering/theme';
 import type { Ball } from './ball';
 import type { Player } from './player';
 import type { Game } from '../game';
+
+/** Shared barbed harpoon head, pointing straight up, tip at (x, tipY). Used by
+ *  the harpoon, the (travelling) power wire, so every spear in the game has the
+ *  same steel-with-gold, ink-outlined silhouette. */
+function drawSpearhead(ctx: CanvasRenderingContext2D, x: number, tipY: number, accent: string = PAL.yellow) {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = '#e9eef5';      // steel
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, tipY - 10);       // sharp point
+  ctx.lineTo(x + 5, tipY - 1);    // right shoulder
+  ctx.lineTo(x + 7, tipY + 8);    // right barb
+  ctx.lineTo(x + 2, tipY + 3);    // inner notch
+  ctx.lineTo(x + 2, tipY + 1);
+  ctx.lineTo(x - 2, tipY + 1);
+  ctx.lineTo(x - 2, tipY + 3);
+  ctx.lineTo(x - 7, tipY + 8);    // left barb
+  ctx.lineTo(x - 5, tipY - 1);    // left shoulder
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Gold accent near the point + a specular glint.
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.moveTo(x, tipY - 8); ctx.lineTo(x + 2.4, tipY - 2); ctx.lineTo(x - 2.4, tipY - 2);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillRect(x - 3.4, tipY - 1, 1.4, 5);
+  ctx.restore();
+}
 
 // ============================ PROJECTILE ============================
 // 'grapple'  — Power Wire: once the tip reaches the ceiling, the wire anchors
@@ -241,46 +275,59 @@ export class Projectile {
 
   draw(ctx) {
     if (this.type === 'harpoon') {
-      // Trailing line
-      ctx.strokeStyle = '#ffe9a8';
+      // Wire — an ink-edged cable with a warm metallic core (not a bare line),
+      // capped by the shared barbed steel spearhead.
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY + 2); ctx.stroke();
+      ctx.strokeStyle = '#ffe28a';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY); ctx.stroke();
-      // Tip
-      ctx.fillStyle = '#ffeb3b';
-      ctx.beginPath();
-      ctx.moveTo(this.x - 5, this.tipY + 6);
-      ctx.lineTo(this.x + 5, this.tipY + 6);
-      ctx.lineTo(this.x, this.tipY - 6);
-      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY + 2); ctx.stroke();
+      ctx.restore();
+      drawSpearhead(ctx, this.x, this.tipY);
     } else if (this.type === 'bullet') {
       ctx.fillStyle = '#fff7ad';
-      ctx.fillRect(this.x - this.w/2, this.y, this.w, this.h);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.4;
+      roundRect(ctx, this.x - this.w / 2, this.y, this.w, this.h, 2, true, true);
     } else if (this.type === 'pellet') {
-      ctx.fillStyle = '#ffa500';
-      ctx.fillRect(this.x - this.w/2, this.y, this.w, this.h);
+      ctx.fillStyle = PAL.amber;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.2;
+      roundRect(ctx, this.x - this.w / 2, this.y, this.w, this.h, 2, true, true);
     } else if (this.type === 'laser') {
       const a = clamp(this.life / 0.2, 0, 1);
+      ctx.save();
       ctx.globalAlpha = a;
-      ctx.fillStyle = '#ff36c4';
-      ctx.fillRect(this.x - this.w/2, this.tipY, this.w, this.startY - this.tipY);
+      // Outer glow → magenta beam → hot white core.
+      ctx.fillStyle = 'rgba(255,54,196,0.35)';
+      ctx.fillRect(this.x - this.w / 2 - 3, this.tipY, this.w + 6, this.startY - this.tipY);
+      ctx.fillStyle = PAL.magenta;
+      ctx.fillRect(this.x - this.w / 2, this.tipY, this.w, this.startY - this.tipY);
       ctx.fillStyle = '#fff';
       ctx.fillRect(this.x - 3, this.tipY, 6, this.startY - this.tipY);
-      ctx.globalAlpha = 1;
+      ctx.restore();
     } else if (this.type === 'flame') {
       const a = clamp(this.life / 0.4, 0, 1);
-      ctx.globalAlpha = a * 0.8;
+      ctx.save();
+      ctx.globalAlpha = a * 0.85;
       ctx.fillStyle = '#ff7733';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffeb3b';
+      ctx.fillStyle = '#ffd60a';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.r * 0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.r * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     } else if (this.type === 'shuriken') {
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.spin);
-      ctx.fillStyle = '#dfe6ee';
-      ctx.strokeStyle = '#27313d';
+      ctx.fillStyle = PAL.steel;
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
       for (let i = 0; i < 4; i++) {
         ctx.rotate(Math.PI / 2);
         ctx.beginPath();
@@ -292,70 +339,86 @@ export class Projectile {
         ctx.fill();
         ctx.stroke();
       }
+      // Hub.
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(0, 0, 2.4, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     } else if (this.type === 'bomb') {
+      // Round bomb with a fuse spark — matches the bomb pickup glyph.
       ctx.fillStyle = '#2b2d42';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#ffb703';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.fillStyle = '#ff5400';
-      ctx.beginPath(); ctx.arc(this.x - 2, this.y - 2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.arc(this.x - this.r * 0.35, this.y - this.r * 0.35, this.r * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PAL.ember;
+      ctx.beginPath(); ctx.arc(this.x + this.r * 0.55, this.y - this.r * 0.85, 2.6, 0, Math.PI * 2); ctx.fill();
     } else if (this.type === 'grapple') {
       // Anchored grapples fade toward the end of their lifetime so the player
       // knows the trap is about to disappear.
       const fade = this.anchored ? clamp(this.anchorLife / 2.5, 0.4, 1) : 1;
+      ctx.save();
       ctx.globalAlpha = fade;
-      // Cable
-      ctx.strokeStyle = this.anchored ? '#9be7ff' : '#ffe9a8';
-      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      // Ink-edged cable with a bright core (cyan when anchored, gold in flight).
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 4.5;
       ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY); ctx.stroke();
-      // Highlight strand
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = this.anchored ? PAL.cyan : '#ffe28a';
+      ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(this.x, this.startY); ctx.lineTo(this.x, this.tipY); ctx.stroke();
-      // Anchor hook at the top
       if (this.anchored) {
-        ctx.fillStyle = '#9be7ff';
-        ctx.beginPath();
-        ctx.arc(this.x, this.tipY, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#0a3550';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        // Sparkle pulse so the player notices it's a live trap
+        ctx.fillStyle = PAL.cyan;
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(this.x, this.tipY, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         const pulse = 0.5 + Math.abs(Math.sin(performance.now() / 220)) * 0.5;
         ctx.globalAlpha = fade * 0.45 * pulse;
-        ctx.strokeStyle = '#9be7ff';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = PAL.cyan;
+        ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(this.x, this.tipY, 10, 0, Math.PI * 2); ctx.stroke();
       } else {
-        // Tip (same shape as harpoon tip)
-        ctx.fillStyle = '#ffeb3b';
-        ctx.beginPath();
-        ctx.moveTo(this.x - 5, this.tipY + 6);
-        ctx.lineTo(this.x + 5, this.tipY + 6);
-        ctx.lineTo(this.x, this.tipY - 6);
-        ctx.closePath(); ctx.fill();
+        ctx.restore();
+        drawSpearhead(ctx, this.x, this.tipY, PAL.cyan);
+        return;
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
     } else if (this.type === 'diagonal') {
-      // Short bolt rendered along its travel direction. Includes a faint
-      // motion-trail cable to read as a Pang-style harpoon at an angle.
+      // Short barbed bolt rendered along its travel direction.
       const ang = Math.atan2(this.vy, this.vx);
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(ang);
-      ctx.strokeStyle = '#ffe9a8';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(2, 0); ctx.stroke();
+      ctx.strokeStyle = '#ffe28a';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(0, 0); ctx.stroke();
-      ctx.fillStyle = '#ffeb3b';
+      ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(2, 0); ctx.stroke();
+      // Barbed steel head pointing along +x.
+      ctx.fillStyle = '#e9eef5';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
       ctx.beginPath();
-      ctx.moveTo(8, 0);
-      ctx.lineTo(-2, -4);
-      ctx.lineTo(-2, 4);
+      ctx.moveTo(10, 0);
+      ctx.lineTo(1, -5);
+      ctx.lineTo(-8, -7);
+      ctx.lineTo(-3, -2);
+      ctx.lineTo(-1, -2);
+      ctx.lineTo(-1, 2);
+      ctx.lineTo(-3, 2);
+      ctx.lineTo(-8, 7);
+      ctx.lineTo(1, 5);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = PAL.yellow;
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(2, -2.4); ctx.lineTo(2, 2.4);
+      ctx.closePath(); ctx.fill();
       ctx.restore();
     }
   }

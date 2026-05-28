@@ -1,6 +1,7 @@
 import { CEILING_Y, GROUND_Y, WALL_L, WALL_R } from '../constants';
 import { randomPickupType } from './ball';
 import { rand } from '../utils';
+import { INK } from '../rendering/theme';
 
 /**
  * Wandering, non-ball threats and helpers — homage to the Pang bestiary.
@@ -123,8 +124,9 @@ export class Creature {
       // Friendly green dragon walking the floor.
       ctx.translate(0, -14);
       ctx.fillStyle = '#06d6a0';
-      ctx.strokeStyle = '#06402b';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
       // Body
       ctx.beginPath();
       ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2);
@@ -133,8 +135,15 @@ export class Creature {
       ctx.beginPath();
       ctx.ellipse(dir * 16, -4, 9, 7, 0, 0, Math.PI * 2);
       ctx.fill(); ctx.stroke();
+      // Cel highlight along the lit (upper-left) flank.
+      ctx.fillStyle = 'rgba(255,255,255,0.32)';
+      ctx.beginPath();
+      ctx.ellipse(-4, -4, 9, 3.5, -0.3, 0, Math.PI * 2);
+      ctx.fill();
       // Spines
       ctx.fillStyle = '#ffd60a';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
       for (let i = -1; i <= 1; i++) {
         ctx.beginPath();
         ctx.moveTo(i * 6, -10);
@@ -143,11 +152,13 @@ export class Creature {
         ctx.closePath();
         ctx.fill();
       }
-      // Eye
-      ctx.fillStyle = '#0a1832';
-      ctx.beginPath();
-      ctx.arc(dir * 19, -5, 1.5, 0, Math.PI * 2);
-      ctx.fill();
+      // Eye — white with ink pupil + sparkle, matching the player/crab.
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(dir * 18, -5, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(dir * 19, -5, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(dir * 18.4, -5.6, 0.7, 0, Math.PI * 2); ctx.fill();
       // Friendly smile
       ctx.strokeStyle = '#0a1832';
       ctx.lineWidth = 1.5;
@@ -165,54 +176,72 @@ export class Creature {
     } else if (this.kind === 'ball_fish') {
       // Globe-fish: round body with tiny wings + tail.
       ctx.fillStyle = '#ffbe0b';
-      ctx.strokeStyle = '#5b3500';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, 11, 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
-      // Side fin
+      ctx.lineJoin = 'round';
+      // Side fin (behind the body).
       ctx.fillStyle = '#fb5607';
       ctx.beginPath();
       ctx.moveTo(-dir * 8, 0);
       ctx.lineTo(-dir * 18, -6);
       ctx.lineTo(-dir * 18, 6);
       ctx.closePath();
-      ctx.fill();
-      // Eye
-      ctx.fillStyle = '#0a1832';
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffbe0b';
       ctx.beginPath();
-      ctx.arc(dir * 4, -2, 1.8, 0, Math.PI * 2);
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      // Cel highlight.
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(-3, -4, 4.5, 2.6, -0.4, 0, Math.PI * 2);
       ctx.fill();
+      // Eye — white with ink pupil + sparkle.
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(dir * 4, -2, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(dir * 4.6, -2, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(dir * 4, -2.6, 0.7, 0, Math.PI * 2); ctx.fill();
     } else {
       // Bird / red bird
       const flap = Math.sin(this.phase * 2.5);
       ctx.fillStyle = this.kind === 'red_bird' ? '#ff4d6d' : '#9aa3ad';
-      ctx.strokeStyle = '#0a1832';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
       // Body
       ctx.beginPath();
       ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2);
       ctx.fill(); ctx.stroke();
       // Beak
       ctx.fillStyle = '#ffbe0b';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(dir * 8, -1);
       ctx.lineTo(dir * 14, 0);
       ctx.lineTo(dir * 8, 1);
       ctx.closePath();
-      ctx.fill();
-      // Wings — animated flap
+      ctx.fill(); ctx.stroke();
+      // Wings — animated flap, with the shared ink outline.
       ctx.fillStyle = this.kind === 'red_bird' ? '#9d0a32' : '#3a4148';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(-2, 0);
       ctx.lineTo(2, -5 - flap * 5);
       ctx.lineTo(6, 0);
       ctx.lineTo(2, 4 + flap * 3);
       ctx.closePath();
-      ctx.fill();
-      // Eye
+      ctx.fill(); ctx.stroke();
+      // Eye — white with ink pupil + sparkle.
       ctx.fillStyle = '#fff';
-      ctx.fillRect(dir * 4, -3, 2, 2);
+      ctx.beginPath(); ctx.arc(dir * 4, -2.5, 2.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(dir * 4.6, -2.5, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(dir * 4.1, -3.1, 0.6, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }

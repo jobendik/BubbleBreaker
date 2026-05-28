@@ -4,6 +4,7 @@ import { clamp, collideCircleRect, rand, randi } from '../utils';
 import { Hazard } from './hazard';
 import { Particle, SmokeCloud } from './particle';
 import { Pickup } from './pickup';
+import { INK, displayFont } from '../rendering/theme';
 import type { Game } from '../game';
 
 // ============================ BALL ==================================
@@ -475,9 +476,15 @@ export class Ball {
       ctx.lineTo(this.x + this.r * 0.28, this.y + this.r * 0.28);
       ctx.stroke();
     } else if (this.type === 'bonus') {
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${this.r}px sans-serif`;
+      // Brand display face (not raw sans-serif) with an ink outline so the
+      // "?" reads on the bright bonus body and matches the game's text.
+      ctx.font = displayFont(this.r * 1.15);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(2, this.r * 0.12);
+      ctx.strokeStyle = INK;
+      ctx.strokeText('?', this.x, this.y);
+      ctx.fillStyle = '#fff';
       ctx.fillText('?', this.x, this.y);
       ctx.textBaseline = 'alphabetic';
     } else if (this.type === 'star') {

@@ -10,11 +10,13 @@ import { earnedTitles, markTitlesSeen } from './systems/titles';
 import { State } from './constants';
 import { UI } from './ui/domRoot';
 import { loadFonts } from './rendering/theme';
+import { installViewportSizing } from './systems/viewport';
 
 // Wire global error handlers as early as possible so a bug during the rest of
 // boot still gets reported.
 installErrorHandlers();
 emit('boot.start');
+installViewportSizing();
 
 // Force the two brand webfonts (Bowlby One / Inter) resident up front so the
 // canvas layer renders in the same faces as the HTML UI from frame one — even

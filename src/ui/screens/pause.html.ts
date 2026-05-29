@@ -51,17 +51,13 @@ export function buildPause(game: Game): HTMLElement {
         <span>Auto-fire</span>
         <div class="pause__toggle-switch"></div>
       </div>
-      <div class="pause__toggle" data-role="lefty">
-        <span>Left-handed layout</span>
-        <div class="pause__toggle-switch"></div>
-      </div>
       <div class="pause__toggle" data-role="haptics">
         <span>Vibration</span>
         <div class="pause__toggle-switch"></div>
       </div>
       <div class="pause__slider-row">
-        <label class="pause__slider-label">Button size</label>
-        <input class="pause__slider" type="range" min="80" max="125" step="5" data-role="scale-slider" aria-label="Button size" />
+        <label class="pause__slider-label">Fire button size</label>
+        <input class="pause__slider" type="range" min="80" max="125" step="5" data-role="scale-slider" aria-label="Fire button size" />
         <span class="pause__slider-value" data-role="scale-value">100%</span>
       </div>
     </div>
@@ -103,11 +99,6 @@ export function buildPause(game: Game): HTMLElement {
     card.querySelector<HTMLElement>('[data-role="autofire"]')!.addEventListener('click', () => {
       AudioSys.menu();
       Storage.data.mobileAutoFire = !Storage.data.mobileAutoFire;
-      Storage.save();
-    });
-    card.querySelector<HTMLElement>('[data-role="lefty"]')!.addEventListener('click', () => {
-      AudioSys.menu();
-      Storage.data.mobileLefty = !Storage.data.mobileLefty;
       Storage.save();
       applyTouchControlSettings();
     });
@@ -169,7 +160,8 @@ export function syncPause(game: Game, root: HTMLElement) {
   if (controls && !controls.dataset.populated) {
     controls.dataset.populated = '1';
     controls.innerHTML = isTouchDevice
-      ? `<div>Use the on-screen buttons to move and fire.</div>
+      ? `<div>Tap the <strong>left half</strong> of the screen to move left, <strong>right half</strong> to move right.</div>
+         <div>Shots fire automatically. Turn off Auto-fire below to use a manual Fire button.</div>
          <div>Tap the pause icon (top-right) to pause / resume.</div>`
       : `<div><strong>A / ←</strong> · <strong>D / →</strong>  Move</div>
          <div><strong>Space / W / ↑</strong>  Shoot</div>
@@ -185,8 +177,6 @@ export function syncPause(game: Game, root: HTMLElement) {
   if (isTouchDevice) {
     const af = root.querySelector<HTMLElement>('[data-role="autofire"]');
     if (af) af.classList.toggle('is-on', !!Storage.data.mobileAutoFire);
-    const lf = root.querySelector<HTMLElement>('[data-role="lefty"]');
-    if (lf) lf.classList.toggle('is-on', !!Storage.data.mobileLefty);
     const hp = root.querySelector<HTMLElement>('[data-role="haptics"]');
     if (hp) hp.classList.toggle('is-on', !!Storage.data.mobileHaptics);
     const slider = root.querySelector<HTMLInputElement>('[data-role="scale-slider"]');

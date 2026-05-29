@@ -1,21 +1,25 @@
 /**
- * DOM touch controls — Left / Right movement + Fire.
+ * DOM touch controls — split-screen movement zones + optional Fire button.
  *
- * Multi-touch model:
- *   - pointerdown on a button starts tracking that pointerId.
+ * Zone model (replaces the old Left / Right arrow buttons):
+ *   - Touching anywhere in the LEFT half of the stage moves the player left.
+ *   - Touching anywhere in the RIGHT half moves the player right.
+ *   - No on-screen buttons are shown for movement — the whole screen IS the
+ *     control surface.
+ *   - Auto-fire handles shooting by default, so the Fire button is hidden.
+ *   - When the player disables auto-fire in Pause, a Fire button appears at
+ *     the bottom-centre of the stage.
+ *
+ * Multi-touch model (unchanged from before):
+ *   - pointerdown on a zone/button starts tracking that pointerId.
  *   - pointermove / pointerup / pointercancel are bound to WINDOW so a
- *     finger can move between buttons (and off the screen edge) without
- *     losing tracking. On every move we hit-test the current xy against
- *     all three buttons and update which (if any) that pointer is over.
+ *     finger can slide between zones without losing tracking.
+ *   - On every move the pointer is re-mapped to the zone it is currently over.
  *   - The union of "held by any pointer" drives the synthetic `keys[]`
  *     entries the rest of the game already reads.
  *
- * This eliminates the slide-off bug in the old `pointerleave`-based code,
- * where a finger sliding from Left → Right left a frame with neither held.
- *
- * Visuals: the three buttons live in a flex row anchored to the bottom of
- * the stage. Left+Right pair on the movement side, Fire on the action
- * side. `body.is-lefty` swaps movement to the right via CSS.
+ * Z-index note: .touch-controls is intentionally one layer below .hud so the
+ * pause button (inside .hud) always sits on top and receives taps first.
  */
 
 import { keys, keysPressed, isTouchDevice } from '../../systems/input';
@@ -31,20 +35,32 @@ const KEY_FOR: Record<BtnId, string> = {
   fire:  'Space',
 };
 
+// `left` and `right` are invisible zone divs; `fire` is an optional button.
 const buttons: Record<BtnId, HTMLElement | null> = { left: null, right: null, fire: null };
 const activePointer = new Map<number, BtnId | null>();
 const held: Record<BtnId, boolean> = { left: false, right: false, fire: false };
 
+/** Return the x-coordinate that splits left from right zones (= stage centre).
+ *  Derived from the right zone element so it tracks CSS layout exactly. */
+function zoneSplitX(): number {
+  if (buttons.right) return buttons.right.getBoundingClientRect().left;
+  // Should never reach here after buildTouchControls() has run. Fallback to
+  // viewport centre so hits are still processed correctly if it somehow does.
+  if (import.meta.env.DEV) console.warn('[touchControls] zoneSplitX: buttons.right is null');
+  return window.innerWidth / 2;
+}
+
 function hitTest(clientX: number, clientY: number): BtnId | null {
-  // Hit-test in priority order — fire wins over left/right if rects overlap
-  // (they don't today, but cheaper to be explicit than to rely on layout).
-  for (const id of ['fire', 'left', 'right'] as const) {
-    const el = buttons[id];
-    if (!el) continue;
-    const r = el.getBoundingClientRect();
-    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return id;
+  // Fire button takes priority if it is currently visible and touched.
+  const fireEl = buttons.fire;
+  if (fireEl && !fireEl.hidden) {
+    const r = fireEl.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+      return 'fire';
+    }
   }
-  return null;
+  // Zone split: left half vs right half of the stage.
+  return clientX < zoneSplitX() ? 'left' : 'right';
 }
 
 function applyHeld(next: Record<BtnId, boolean>) {
@@ -105,52 +121,44 @@ export function releaseAllTouchControls() {
   applyHeld({ left: false, right: false, fire: false });
 }
 
-/** Apply the current saved scale + lefty preferences to the controls. Idempotent
- *  — safe to call on any settings change or at boot. */
+/** Apply current saved settings to the controls. Idempotent — safe to call
+ *  on any settings change or at boot. */
 export function applyTouchControlSettings() {
   const scale = Math.max(0.6, Math.min(1.4, Storage.data.mobileTouchScale || 1));
   document.body.style.setProperty('--touch-scale', String(scale));
-  document.body.classList.toggle('is-lefty', !!Storage.data.mobileLefty);
+  // Show the fire button only when auto-fire is disabled so the screen stays
+  // clean for the default (auto-fire on) experience.
+  if (buttons.fire) {
+    buttons.fire.hidden = !!Storage.data.mobileAutoFire;
+  }
 }
 
 export function buildTouchControls(): HTMLElement {
   const root = document.createElement('div');
   root.className = 'touch-controls';
-  // Built but hidden on desktop. CSS gates display on pointer:coarse + state.
+  // Built but inert on desktop. CSS also gates display on pointer:coarse.
   if (!isTouchDevice) {
     root.style.display = 'none';
     return root;
   }
 
   root.innerHTML = `
-    <div class="touch-controls__pad touch-controls__pad--move">
-      <button class="touch-btn touch-btn--left"  type="button" aria-label="Move left"  data-role="left">
-        <svg class="touch-btn__icon" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M20 6 L8 16 L20 26 Z" fill="currentColor"/>
-        </svg>
-      </button>
-      <button class="touch-btn touch-btn--right" type="button" aria-label="Move right" data-role="right">
-        <svg class="touch-btn__icon" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M12 6 L24 16 L12 26 Z" fill="currentColor"/>
-        </svg>
-      </button>
-    </div>
-    <div class="touch-controls__pad touch-controls__pad--fire">
-      <button class="touch-btn touch-btn--fire" type="button" aria-label="Fire" data-role="fire">
-        <svg class="touch-btn__icon" viewBox="0 0 32 32" aria-hidden="true">
-          <!-- Harpoon: shaft + arrowhead, oriented up like the in-game projectile. -->
-          <rect x="14" y="14" width="4" height="14" rx="1.5" fill="currentColor"/>
-          <path d="M16 3 L7 14 L13 14 L13 18 L19 18 L19 14 L25 14 Z" fill="currentColor"/>
-        </svg>
-        <span class="touch-btn__label">FIRE</span>
-      </button>
-    </div>
+    <div class="touch-zone touch-zone--left"  data-role="left"  aria-hidden="true"></div>
+    <div class="touch-zone touch-zone--right" data-role="right" aria-hidden="true"></div>
+    <button class="touch-btn touch-btn--fire" type="button" aria-label="Fire" data-role="fire" hidden>
+      <svg class="touch-btn__icon" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="14" y="14" width="4" height="14" rx="1.5" fill="currentColor"/>
+        <path d="M16 3 L7 14 L13 14 L13 18 L19 18 L19 14 L25 14 Z" fill="currentColor"/>
+      </svg>
+      <span class="touch-btn__label">FIRE</span>
+    </button>
   `;
 
   buttons.left  = root.querySelector('[data-role="left"]')  as HTMLElement;
   buttons.right = root.querySelector('[data-role="right"]') as HTMLElement;
   buttons.fire  = root.querySelector('[data-role="fire"]')  as HTMLElement;
 
+  // Zones trigger movement on contact; fire button triggers shooting.
   for (const id of ['left', 'right', 'fire'] as const) {
     const el = buttons[id]!;
     el.addEventListener('pointerdown', onPointerDown, { passive: false });
@@ -161,10 +169,7 @@ export function buildTouchControls(): HTMLElement {
   window.addEventListener('pointermove',   onPointerMove);
   window.addEventListener('pointerup',     releasePointer);
   window.addEventListener('pointercancel', releasePointer);
-  // Tab-out / focus-loss: drop all internal state. input.ts's blur handler
-  // also clears `keys`, but without this our local `held` and
-  // `activePointer` go stale, and a subsequent pointermove wouldn't see a
-  // diff to re-sync the keys table.
+  // Tab-out / focus-loss: drop all internal state.
   window.addEventListener('blur', releaseAllTouchControls);
   // Page hidden (tab switch on mobile) is the same kind of event.
   document.addEventListener('visibilitychange', () => {

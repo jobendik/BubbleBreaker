@@ -342,26 +342,25 @@
   text-transform: uppercase;
 }
 
-/* ---- Touch controls — DOM buttons.
-   Layout: two flex pads anchored to the bottom corners of the stage.
-   - .touch-controls__pad--move: left side, holds Left+Right buttons
-   - .touch-controls__pad--fire: right side, holds Fire
-   `body.is-lefty` reverses the side assignment.
-   Sizes scale via the `--touch-scale` custom property (set on body by
-   the settings system). Safe-area insets push the buttons away from
-   notches and the home-bar gesture zone on iOS. ---- */
+/* ---- Touch controls — invisible movement zones + optional Fire button.
+   Movement is zone-based: the left half of the stage moves the player
+   left, the right half moves the player right.  No arrow buttons are
+   shown for movement — the whole stage is the control surface.
+   The Fire button appears only when the player turns auto-fire off; it
+   floats at the bottom-centre so either thumb can reach it comfortably.
+
+   Z-index is one below --z-hud (= 19) so the HUD pause button (z=20)
+   always sits on top and receives taps first, even though .touch-controls
+   is mounted after .hud in the DOM. ---- */
 .touch-controls {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: var(--z-hud);
+  /* One step below .hud so the pause button always receives taps first. */
+  z-index: calc(var(--z-hud) - 1);
   display: none;
-  --touch-btn-base: 78px;
-  --touch-btn-size: calc(var(--touch-btn-base) * var(--touch-scale, 1));
   --touch-fire-base: 102px;
   --touch-fire-size: calc(var(--touch-fire-base) * var(--touch-scale, 1));
-  --touch-gap: clamp(10px, 2cqi, 18px);
-  --touch-edge-x: clamp(12px, 3cqi, 28px);
   --touch-edge-y: clamp(10px, 2.4cqh, 22px);
 }
 @media (hover: none) and (pointer: coarse) {
@@ -370,9 +369,13 @@
   body[data-state="player_dead"] .touch-controls {
     display: block;
   }
-  /* Dim + drop interactivity during pause so the buttons don't compete with
-     the pause card visually. They stay rendered so they don't pop-in on
-     resume, but no taps reach them. */
+  /* Zones and fire button become interactive only while the game is live. */
+  body[data-state="playing"] .touch-zone,
+  body[data-state="player_dead"] .touch-zone {
+    pointer-events: auto;
+  }
+  /* Dim the fire button during pause; zones are already pointer-events:none
+     outside playing/player_dead so no need to explicitly disable them. */
   body[data-state="paused"] .touch-controls {
     opacity: 0.25;
     transition: opacity var(--dur-base) var(--ease-out);
@@ -380,39 +383,29 @@
   body[data-state="paused"] .touch-btn { pointer-events: none; }
 }
 
-.touch-controls__pad {
+/* Half-screen movement zones — invisible, full height, each covering one
+   half of the stage.  pointer-events defaults to none and is activated by
+   the state rule above. */
+.touch-zone {
   position: absolute;
-  bottom: calc(var(--touch-edge-y) + env(safe-area-inset-bottom, 0px));
-  display: flex;
-  align-items: flex-end;
-  gap: var(--touch-gap);
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  pointer-events: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.touch-controls__pad--move {
-  left: calc(var(--touch-edge-x) + env(safe-area-inset-left, 0px));
-}
-.touch-controls__pad--fire {
-  right: calc(var(--touch-edge-x) + env(safe-area-inset-right, 0px));
-}
-/* Lefty mode: swap the two pads. We keep the source markup unchanged and
-   flip via CSS so the JS doesn't have to know about handedness. */
-body.is-lefty .touch-controls__pad--move {
-  left: auto;
-  right: calc(var(--touch-edge-x) + env(safe-area-inset-right, 0px));
-}
-body.is-lefty .touch-controls__pad--fire {
-  right: auto;
-  left: calc(var(--touch-edge-x) + env(safe-area-inset-left, 0px));
-}
+.touch-zone--left  { left:  0; }
+.touch-zone--right { right: 0; }
 
+/* Optional fire button — shown only when auto-fire is off.  Floats at the
+   bottom-centre so either thumb can reach it without stretching. */
 .touch-btn {
   pointer-events: auto;
-  /* The button is its own positioning context for the icon + label. */
   position: relative;
-  width: var(--touch-btn-size);
-  height: var(--touch-btn-size);
-  /* The painted shape is a circle; tap-area is the full bounding box (we
-     don't clip events). This gives a generous hit-target without making the
-     visual feel oversized. */
+  /* Size is driven entirely by the fire-button variables. */
   border-radius: 50%;
   background:
     radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 55%),
@@ -425,7 +418,6 @@ body.is-lefty .touch-controls__pad--fire {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  /* No scrolling/zooming from gestures on the button. */
   touch-action: none;
   font-family: var(--font-display);
   font-size: clamp(11px, 1.4cqi, 13px);
@@ -442,7 +434,6 @@ body.is-lefty .touch-controls__pad--fire {
     0 8px 18px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     inset 0 -2px 0 rgba(0, 0, 0, 0.45);
-  /* Honor the global reduced-motion token so transitions don't fight it. */
   --press-scale: 0.93;
 }
 .touch-btn:focus-visible {
@@ -485,10 +476,12 @@ body.is-lefty .touch-controls__pad--fire {
   opacity: 0.85;
 }
 .touch-btn--fire {
+  position: absolute;
+  bottom: calc(var(--touch-edge-y) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   width: var(--touch-fire-size);
   height: var(--touch-fire-size);
-  /* Fire gets a coral/yellow rim so it's visually distinct from the two
-     movement buttons at a glance — important for thumb muscle-memory. */
   border-color: color-mix(in srgb, var(--brand-coral) 70%, transparent);
   background:
     radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0) 55%),
@@ -502,6 +495,9 @@ body.is-lefty .touch-controls__pad--fire {
     linear-gradient(180deg, color-mix(in srgb, var(--brand-coral) 92%, white), var(--brand-coral));
   border-color: var(--ink);
   color: var(--ink);
+  /* Cancel the centering translateX before adding the press scale so they
+     compose correctly. */
+  transform: translateX(-50%) scale(var(--press-scale));
   box-shadow:
     0 4px 0 var(--ink),
     0 0 28px rgba(255, 127, 80, 0.7),
@@ -509,19 +505,19 @@ body.is-lefty .touch-controls__pad--fire {
     inset 0 -2px 0 rgba(0, 0, 0, 0.35);
 }
 
-/* On very wide stages (tablets in landscape), keep the buttons comfortable
-   without making them so big they cover the player. Cap the fire button. */
 @media (min-aspect-ratio: 16/9) and (pointer: coarse) {
-  .touch-controls { --touch-btn-base: 84px; --touch-fire-base: 110px; }
+  .touch-controls { --touch-fire-base: 110px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .touch-btn { transition: none; }
-  .touch-btn.is-held { transform: none; }
+  /* Fire button must keep its translateX(-50%) centering even with no press
+     animation; the non-fire movement zones have no transform to worry about. */
+  .touch-btn--fire.is-held { transform: translateX(-50%); }
 }
 
 /* ---- First-play touch onboarding overlay ----
-   Translucent dim + three labelled chips that point at LEFT / RIGHT / FIRE.
+   Translucent dim + two zone-area chips that show MOVE LEFT / MOVE RIGHT.
    Only renders on touch + during PLAYING + only when .is-open is set
    from JS. CSS @media gate is belt-and-suspenders. */
 .mobile-onboarding {
@@ -536,8 +532,9 @@ body.is-lefty .touch-controls__pad--fire {
     visibility 0s linear var(--dur-base);
   font-family: var(--font-display);
   color: var(--paper);
-  --chip-bottom-offset: clamp(118px, 20cqh, 180px);
-  --chip-edge-x: clamp(20px, 5cqi, 60px);
+  /* Vertical centre of each chip is roughly at 70% height — comfortably in
+     the lower half but above where a bottom-centre fire button would sit. */
+  --chip-y: 70%;
 }
 @media not all and (hover: none) and (pointer: coarse) {
   .mobile-onboarding { display: none; }
@@ -552,50 +549,42 @@ body.is-lefty .touch-controls__pad--fire {
 .mobile-onboarding__dim {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 95%, rgba(0, 0, 0, 0.65), transparent 35%),
-    radial-gradient(ellipse at 80% 95%, rgba(0, 0, 0, 0.65), transparent 35%),
-    rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.42);
 }
 
+/* Zone-area markers — centred inside each half of the stage. */
 .mobile-onboarding__marker {
   position: absolute;
+  top: var(--chip-y);
+  transform: translateY(-50%);
+  width: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.55));
-  animation: onboard-bounce 1.4s var(--ease-out) infinite;
+  animation: onboard-bounce 1.6s var(--ease-out) infinite;
 }
-/* MOVE marker hovers above the L+R pair, anchored to the movement pad. The
-   chip spans the visual width of both buttons so it never collides with the
-   FIRE marker even on narrow viewports. */
-.mobile-onboarding__marker--move {
-  left: calc(var(--chip-edge-x) + env(safe-area-inset-left, 0px));
-  bottom: var(--chip-bottom-offset);
+.mobile-onboarding__marker--left {
+  left: 0;
   color: var(--brand-cyan);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
-.mobile-onboarding__marker--fire {
-  right: calc(var(--chip-edge-x) + env(safe-area-inset-right, 0px));
-  bottom: var(--chip-bottom-offset);
-  color: var(--brand-coral);
-  animation-delay: 200ms;
+.mobile-onboarding__marker--right {
+  right: 0;
+  color: var(--brand-yellow);
+  animation-delay: 250ms;
 }
 
-/* Lefty swap: keep markers above the buttons after the lefty swap. */
-body.is-lefty .mobile-onboarding__marker--move {
-  left: auto;
-  right: calc(var(--chip-edge-x) + env(safe-area-inset-right, 0px));
-}
-body.is-lefty .mobile-onboarding__marker--fire {
-  right: auto;
-  left: calc(var(--chip-edge-x) + env(safe-area-inset-left, 0px));
+.mobile-onboarding__zone-icon {
+  width: 56px;
+  height: 56px;
 }
 
 .mobile-onboarding__chip {
   background: var(--ink);
   color: var(--paper);
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: var(--radius-pill);
   border: 2px solid currentColor;
   font-size: clamp(11px, 1.5cqi, 13px);
@@ -605,16 +594,8 @@ body.is-lefty .mobile-onboarding__marker--fire {
   white-space: nowrap;
   box-shadow: 0 0 16px color-mix(in srgb, currentColor 60%, transparent);
 }
-.mobile-onboarding__chip--fire { color: var(--brand-coral); }
-.mobile-onboarding__arrow {
-  width: 32px;
-  height: 32px;
-  color: currentColor;
-}
 
-/* Main hint + autofire subline are stacked tight at the top of the dimmer so
-   they never overlap the chips (which live near the bottom above the
-   buttons). Keeping them grouped reads as one coherent message. */
+/* Headline hint centred near the top of the overlay. */
 .mobile-onboarding__hint {
   position: absolute;
   left: 50%;
@@ -645,8 +626,8 @@ body.is-lefty .mobile-onboarding__marker--fire {
 }
 
 @keyframes onboard-bounce {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(6px); }
+  0%, 100% { transform: translateY(calc(var(--chip-y, 0%) - 50%)); }
+  50%      { transform: translateY(calc(var(--chip-y, 0%) - 50% + 8px)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .mobile-onboarding__marker { animation: none; }

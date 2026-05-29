@@ -2,9 +2,9 @@
  * First-play touch onboarding overlay.
  *
  * Shown ONCE on the first PLAYING entry on a touch device. Translucent
- * dim with three labelled markers that point at the LEFT / RIGHT / FIRE
- * buttons, plus a "Tap anywhere to dismiss" footer. Dismisses on any
- * tap, on the player's first horizontal move, or after 7 seconds.
+ * dim with two zone-area markers (left half = move left, right half = move
+ * right), plus a "Tap anywhere to start" footer. Dismisses on any tap, on
+ * the player's first horizontal move, or after 7 seconds.
  *
  * On dismiss we set Storage.mobileOnboardingSeen and persist. That same
  * flag also gates auto-fire (input.ts) so the player isn't auto-firing
@@ -63,18 +63,23 @@ export function buildOnboardingOverlay(_game: Game): HTMLElement {
 
   root.innerHTML = `
     <div class="mobile-onboarding__dim" data-role="dim"></div>
-    <div class="mobile-onboarding__marker mobile-onboarding__marker--move">
-      <div class="mobile-onboarding__chip">← MOVE →</div>
-      <svg class="mobile-onboarding__arrow" viewBox="0 0 40 40" aria-hidden="true">
-        <path d="M20 6 L20 30 M20 30 L12 22 M20 30 L28 22" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <div class="mobile-onboarding__marker mobile-onboarding__marker--left">
+      <svg class="mobile-onboarding__zone-icon" viewBox="0 0 56 56" aria-hidden="true">
+        <circle cx="28" cy="28" r="26" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.4"/>
+        <path d="M30 18 L18 28 L30 38 M18 28 L38 28" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
+      <div class="mobile-onboarding__chip">← MOVE LEFT</div>
     </div>
-    <div class="mobile-onboarding__marker mobile-onboarding__marker--fire">
-      <div class="mobile-onboarding__chip mobile-onboarding__chip--fire">FIRE</div>
-      <svg class="mobile-onboarding__arrow" viewBox="0 0 40 40" aria-hidden="true">
-        <path d="M20 6 L20 30 M20 30 L12 22 M20 30 L28 22" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <div class="mobile-onboarding__marker mobile-onboarding__marker--right">
+      <svg class="mobile-onboarding__zone-icon" viewBox="0 0 56 56" aria-hidden="true">
+        <circle cx="28" cy="28" r="26" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.4"/>
+        <path d="M26 18 L38 28 L26 38 M38 28 L18 28" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
+      <div class="mobile-onboarding__chip">MOVE RIGHT →</div>
     </div>
+
     <div class="mobile-onboarding__hint">Pop every bubble.<br>Tap anywhere to start.</div>
     <div class="mobile-onboarding__autofire" data-role="autofire-hint">Auto-fire ON · change in Pause</div>
   `;

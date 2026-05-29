@@ -153,6 +153,34 @@ window.addEventListener('blur', () => {
   // they listen on window pointerup which fires during a tab-out blur.
 });
 
+// ---- Mobile zoom suppression ------------------------------------------------
+// iOS Safari ignores the `user-scalable=no` viewport flag, so double-tap-to-zoom
+// and pinch-zoom still fire on top of the game. Because the player taps rapidly
+// to move, the screen kept zooming in mid-game. `touch-action: manipulation`
+// (set in base.css) kills the double-tap zoom on compliant browsers; these
+// listeners are the belt-and-suspenders path for iOS Safari, which needs an
+// explicit preventDefault on its non-standard gesture events and on the second
+// tap of a rapid pair. Interactive HTML controls (pause, menu buttons) are
+// exempted so their tap → synthetic click still fires.
+if (typeof document !== 'undefined') {
+  const stopGesture = (e: Event) => e.preventDefault();
+  for (const evt of ['gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(evt, stopGesture, { passive: false });
+  }
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e: TouchEvent) => {
+    const now = Date.now();
+    const target = e.target as HTMLElement | null;
+    const interactive = !!target?.closest('button, a, input, select, textarea, [role="button"]');
+    if (now - lastTouchEnd <= 300 && !interactive) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (!target?.closest('button, a, input, select, textarea, [role="button"]')) e.preventDefault();
+  }, { passive: false });
+}
+
 export function consumePressed(code: string) {
   if (keysPressed[code]) { keysPressed[code] = false; return true; }
   return false;

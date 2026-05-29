@@ -68,6 +68,10 @@ export interface LevelSummary {
 export class Game {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
+  /** World→device-pixel scale applied at the top of every render frame.
+   *  Keeps the fixed 960×540 world crisp on high-DPR phones by sizing the
+   *  canvas backing store to its CSS box × devicePixelRatio. */
+  renderScale: number;
   state: GameState;
   t: number;
   lastTime: number;
@@ -178,6 +182,7 @@ export class Game {
     if (!ctx) throw new Error('2D canvas context is not available.');
     this.canvas = canvas;
     this.ctx = ctx;
+    this.renderScale = 1;
     this.state = State.MAIN_MENU;
     this.t = 0;
     this.lastTime = 0;
@@ -662,10 +667,35 @@ export class Game {
     }
   }
 
+  /** Match the canvas backing store to its on-screen CSS box × devicePixelRatio
+   *  so the fixed 960×540 world is rendered at native resolution (sharp) on any
+   *  phone, instead of being upscaled by the browser. The CSS box stays 16:9
+   *  (= the world aspect), so `renderScale` is a single uniform factor and the
+   *  client→world mapping in input.ts is unaffected (it works in CSS pixels).
+   *  Cheap: only touches the DOM when the size actually changes. */
+  syncCanvasResolution() {
+    const cssW = this.canvas.clientWidth;
+    const cssH = this.canvas.clientHeight;
+    if (!cssW || !cssH) return;
+    const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
+    const bw = Math.max(1, Math.round(cssW * dpr));
+    const bh = Math.max(1, Math.round(cssH * dpr));
+    if (this.canvas.width !== bw || this.canvas.height !== bh) {
+      this.canvas.width = bw;
+      this.canvas.height = bh;
+    }
+    this.renderScale = bw / W;
+  }
+
   render() {
     const ctx = this.ctx;
+    this.syncCanvasResolution();
+    const s = this.renderScale;
+    // Reset to identity to wipe the full (device-pixel) backing store, then map
+    // world units → device pixels with the uniform DPR-aware scale.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.setTransform(s, 0, 0, s, 0, 0);
 
     // Shake offset (suppressed entirely when the accessibility flag is set).
     // SHAKE_SCALE damps every call site uniformly — individual values in

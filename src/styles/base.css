@@ -21,6 +21,11 @@ html, body {
           user-select: none;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  /* Disable double-tap-to-zoom and long-press gestures while keeping normal
+     taps/scrolls. Critical on mobile: the player taps rapidly to move, which
+     otherwise triggers double-tap zoom (iOS especially). Gameplay surfaces
+     additionally set `touch-action: none` to also block panning. */
+  touch-action: manipulation;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -33,11 +38,23 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Outer page ambience — a very subtle radial light so the letterboxed
-     edges don't feel like a hard cutoff in fullscreen embeds. */
+  /* Keep the stage clear of notches / rounded corners / system bars on
+     phones (paired with `viewport-fit=cover` in index.html). */
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  box-sizing: border-box;
+  /* Outer page ambience — tinted to the active biome's sky so the letterbox
+     edges read as part of the scene (a cohesive full-screen look) instead of
+     hard black bars on phones whose aspect ratio is wider than the 16:9 stage. */
   background:
-    radial-gradient(ellipse at 50% 50%, #0d1a2e 0%, #04060a 65%),
+    radial-gradient(ellipse at 50% 35%,
+      color-mix(in srgb, var(--sky-1, #0d1a2e) 55%, #04060a) 0%,
+      #04060a 70%),
     #000;
+  transition: background 600ms ease;
 }
 
 #stage {

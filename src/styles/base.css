@@ -42,9 +42,9 @@ html, body {
 
 #stage {
   position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
+  width: min(100vw, calc(100vh * 16 / 9));    /* fallback for browsers without dvh support */
   width: min(100vw, calc(100dvh * 16 / 9));  /* dvh: dynamic viewport height */
-  height: min(100vh, calc(100vw * 9 / 16));
+  height: min(100vh, calc(100vw * 9 / 16));   /* fallback for browsers without dvh support */
   height: min(100dvh, calc(100vw * 9 / 16)); /* dvh: dynamic viewport height */
   container-type: size;
   background: #07101e;

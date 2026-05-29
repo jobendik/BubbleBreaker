@@ -28,7 +28,8 @@ html, body {
 
 #wrap {
   width: 100vw;
-  height: 100vh;
+  height: 100vh;    /* fallback for browsers without dvh support */
+  height: 100dvh;   /* dynamic viewport height — adjusts for mobile browser chrome (address bar, nav bar) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,8 +42,10 @@ html, body {
 
 #stage {
   position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
+  width: min(100vw, calc(100vh * 16 / 9));    /* fallback for browsers without dvh support */
+  width: min(100vw, calc(100dvh * 16 / 9));  /* dvh: dynamic viewport height */
+  height: min(100vh, calc(100vw * 9 / 16));   /* fallback for browsers without dvh support */
+  height: min(100dvh, calc(100vw * 9 / 16)); /* dvh: dynamic viewport height */
   container-type: size;
   background: #07101e;
   border-radius: clamp(0px, 1cqi, 14px);

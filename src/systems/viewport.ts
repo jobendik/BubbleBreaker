@@ -5,15 +5,15 @@
  * off. `visualViewport` is the reliable source on iPhone; fall back to the
  * layout viewport elsewhere.
  */
-let installed = false;
+let uninstallViewportSizing: (() => void) | null = null;
 
 export function installViewportSizing() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (installed) return;
-  installed = true;
+  if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
+  if (uninstallViewportSizing) return uninstallViewportSizing;
 
-  let rafId = 0;
+  let pendingAnimationFrameId = 0;
   const root = document.documentElement;
+  const visualViewport = window.visualViewport;
 
   const readViewport = () => {
     const visual = window.visualViewport;
@@ -26,21 +26,36 @@ export function installViewportSizing() {
   };
 
   const apply = () => {
-    rafId = 0;
+    pendingAnimationFrameId = 0;
     const { width, height } = readViewport();
     root.style.setProperty('--app-vw', `${width}px`);
     root.style.setProperty('--app-vh', `${height}px`);
   };
 
   const schedule = () => {
-    if (rafId) return;
-    rafId = window.requestAnimationFrame(apply);
+    if (pendingAnimationFrameId) return;
+    pendingAnimationFrameId = window.requestAnimationFrame(apply);
   };
 
   apply();
   window.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('orientationchange', schedule, { passive: true });
   window.addEventListener('pageshow', schedule, { passive: true });
-  window.visualViewport?.addEventListener('resize', schedule, { passive: true });
-  window.visualViewport?.addEventListener('scroll', schedule, { passive: true });
+  visualViewport?.addEventListener('resize', schedule, { passive: true });
+  visualViewport?.addEventListener('scroll', schedule, { passive: true });
+
+  uninstallViewportSizing = () => {
+    if (pendingAnimationFrameId) {
+      window.cancelAnimationFrame(pendingAnimationFrameId);
+      pendingAnimationFrameId = 0;
+    }
+    window.removeEventListener('resize', schedule);
+    window.removeEventListener('orientationchange', schedule);
+    window.removeEventListener('pageshow', schedule);
+    visualViewport?.removeEventListener('resize', schedule);
+    visualViewport?.removeEventListener('scroll', schedule);
+    uninstallViewportSizing = null;
+  };
+
+  return uninstallViewportSizing;
 }

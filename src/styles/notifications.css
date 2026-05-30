@@ -429,17 +429,23 @@
   position: absolute;
   bottom: clamp(12px, 2cqi, 22px);
   left: clamp(12px, 2cqi, 22px);
+  right: auto;
+  width: max-content;
+  max-width: min(220px, calc(100cqi - 24px));
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   pointer-events: none;
+  padding: 0;
 }
 
 .hud__effect {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 2px 10px;
   padding: 8px 14px 8px 10px;
   background: rgba(10, 24, 50, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -447,7 +453,10 @@
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   overflow: hidden;
-  min-width: 160px;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: clamp(118px, 16cqi, 160px);
+  max-width: min(220px, 48cqi);
   font-family: var(--font-ui);
   font-weight: 800;
   font-size: var(--fs-small);
@@ -472,6 +481,21 @@
   transition: width 200ms linear;
 }
 
+.hud__effect-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud__effect-time {
+  justify-self: end;
+}
+
+.hud__effect-bar {
+  display: none;
+}
+
 /* Tinting per effect type. Border color matches the bar so the chip
    reads as a coherent color identity. */
 .hud__effect--slow   { --effect-color: var(--brand-cyan);   border-color: rgba(155, 231, 255, 0.6); color: var(--brand-cyan); }
@@ -480,6 +504,35 @@
 .hud__effect--boost  { --effect-color: var(--brand-mint);   border-color: rgba(6, 214, 160, 0.6);   color: var(--brand-mint); }
 .hud__effect--jammed { --effect-color: var(--brand-pink);   border-color: rgba(255, 77, 109, 0.6);  color: var(--brand-pink); }
 .hud__effect--boss   { --effect-color: var(--brand-pink);   border-color: rgba(255, 77, 109, 0.6);  color: var(--brand-pink); }
+
+@container (max-height: 500px) {
+  .hud__bottom {
+    top: clamp(82px, 24cqh, 106px);
+    bottom: auto;
+    left: clamp(8px, 1.6cqi, 12px);
+    max-width: min(168px, 34cqi);
+    gap: 5px;
+  }
+
+  .hud__effect {
+    width: min(168px, 34cqi);
+    min-width: 0;
+    max-width: min(168px, 34cqi);
+    min-height: 28px;
+    padding: 5px 8px 6px;
+    border-radius: 9px;
+    font-size: clamp(0.58rem, 1.15cqi, 0.7rem);
+    letter-spacing: 0.08em;
+  }
+
+  .hud__effect-time {
+    font-size: clamp(0.58rem, 1.05cqi, 0.68rem);
+  }
+
+  .hud__effect::before {
+    height: 2px;
+  }
+}
 
 /* =====================================================================
    VIGNETTE — full-stage CSS overlay. Subtle radial darkening at the

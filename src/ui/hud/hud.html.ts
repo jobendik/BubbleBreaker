@@ -335,6 +335,7 @@ export function syncHUD(game: Game) {
       chip.className = 'hud__effect ' + e.cls;
       chip.dataset.effectId = e.id;
       const pct = Math.max(0, Math.min(1, e.ratio)) * 100;
+      chip.style.setProperty('--effect-progress', pct.toFixed(0) + '%');
       chip.innerHTML = `
         <span class="hud__effect-label">${e.label}</span>
         ${e.time ? `<span class="hud__effect-time" data-role="effect-time">${Math.ceil(e.time)}s</span>` : ''}
@@ -353,8 +354,11 @@ export function syncHUD(game: Game) {
         if (time.textContent !== text) time.textContent = text;
       }
       const bar = chip.querySelector<HTMLElement>('[data-role="effect-bar"]');
+      const pct = (Math.max(0, Math.min(1, e.ratio)) * 100).toFixed(0) + '%';
+      if (chip.style.getPropertyValue('--effect-progress') !== pct) {
+        chip.style.setProperty('--effect-progress', pct);
+      }
       if (bar) {
-        const pct = (Math.max(0, Math.min(1, e.ratio)) * 100).toFixed(0) + '%';
         if (bar.style.width !== pct) bar.style.width = pct;
       }
     }

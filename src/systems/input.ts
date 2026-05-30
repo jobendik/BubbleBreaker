@@ -24,6 +24,21 @@ export const isTouchDevice =
   typeof window !== 'undefined' &&
   (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
 
+// Mark the document as touch-capable so CSS can gate the on-screen movement
+// zones on the SAME signal the JS uses. We deliberately do NOT gate the zones
+// on `@media (hover: none) and (pointer: coarse)` alone: that media query tests
+// the device's *primary* pointer, and a large slice of Android Chrome devices
+// (foldables, tablets, Samsung DeX phones, anything that ever paired a stylus /
+// mouse / Bluetooth pointer) report the primary pointer as `fine` / `hover`
+// even though they have a touchscreen. On those devices the media query fails
+// to match, the zones never get `pointer-events: auto`, and the player can't
+// move — while auto-fire (pure JS) keeps working, so the game looks alive but
+// frozen in place. iOS Safari always reports coarse/no-hover, which is why the
+// bug is invisible there. `maxTouchPoints` is the reliable cross-device signal.
+if (typeof document !== 'undefined' && isTouchDevice) {
+  document.documentElement.classList.add('is-touch');
+}
+
 let canvasEl: HTMLCanvasElement | null = null;
 
 // Auto-fire ownership tracking. Declared up here so the window.blur handler

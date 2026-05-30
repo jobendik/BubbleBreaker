@@ -133,6 +133,18 @@ body[data-state="victory"]      #game {
   visibility: hidden;
 }
 
+/* Mobile fix: hide toast notifications when a full-screen overlay is active
+   (game-over, victory, daily-result) so toasts never cover the overlay panel.
+   Toasts use --z-toast (50) while overlay .ui-screen elements are z-index:auto,
+   making toasts paint on top without this guard. */
+body[data-state="game_over"]    .toasts-layer,
+body[data-state="victory"]      .toasts-layer,
+body[data-state="daily_result"] .toasts-layer { display: none; }
+
+/* Overlay screens (pause, game-over, level-clear, boss, victory) must sit
+   above the toast layer (--z-toast: 50) inside the #ui-root stacking context. */
+.overlay-screen.is-active { z-index: var(--z-modal); }
+
 #ui-root {
   position: absolute;
   inset: 0;

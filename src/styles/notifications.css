@@ -279,6 +279,28 @@
   .medal__icon { width: 36px; height: 36px; font-size: 18px; }
 }
 
+/* Mobile fix: on a short landscape stage toasts must stay compact so they
+   never cover the pause button or lives display in the HUD corners.
+   Use a container height query so sizing is based on the actual game stage. */
+@container (max-height: 500px) {
+  .toasts-layer {
+    top: clamp(6px, 9cqh, 48px);
+    gap: 4px;
+    max-width: min(60cqi, 320px);
+  }
+  .toast {
+    padding: 5px 10px 5px 8px;
+    gap: 7px;
+    white-space: normal;
+  }
+  .toast__icon  { width: 16px; height: 16px; font-size: 10px; }
+  .toast__text  { font-size: var(--fs-micro); }
+  .toast__text b { font-size: var(--fs-micro); margin-right: 3px; }
+  /* Medals are purely celebratory — hide on very short stages to avoid
+     covering gameplay controls. */
+  .medals-layer { display: none; }
+}
+
 /* =====================================================================
    SCORE DELTA — a small "+250" that floats up next to the score on each
    pop. Lives inside the HUD's score-wrap so it positions relative to

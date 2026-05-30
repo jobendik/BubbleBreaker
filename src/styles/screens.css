@@ -1129,6 +1129,50 @@
   50% { opacity: 0.25; }
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .overlay-card {
+    width: min(620px, 94cqi);
+    padding: clamp(10px, 1.7cqi, 18px);
+    gap: clamp(6px, 1.1cqi, 12px);
+  }
+  .overlay-card__title.ui-heading--display {
+    font-size: clamp(1.7rem, 5.2cqi, 3rem);
+    line-height: 0.92;
+  }
+  .overlay-card__stats {
+    margin: clamp(4px, 1cqi, 10px) 0;
+  }
+  .overlay-card__actions {
+    gap: clamp(8px, 1.2cqi, 12px);
+  }
+  .overlay-card__actions .ui-btn {
+    flex: 1 1 170px;
+    min-height: 40px;
+    padding-inline: clamp(10px, 1.8cqi, 14px);
+  }
+  .daily__desc,
+  .gameover__tip {
+    font-size: clamp(0.76rem, 1.35cqi, 0.92rem);
+    line-height: 1.3;
+  }
+  .gameover__warning {
+    gap: 8px;
+    padding: 5px 10px;
+    font-size: clamp(0.62rem, 1.05cqi, 0.76rem);
+    letter-spacing: 0.12em;
+  }
+  .result-almost {
+    padding: clamp(8px, 1.3cqi, 10px) clamp(10px, 1.6cqi, 12px);
+    font-size: clamp(0.72rem, 1.2cqi, 0.84rem);
+  }
+  .ui-stat-row {
+    padding: clamp(5px, 0.8cqi, 8px) 0;
+  }
+  .ui-stat-row__value {
+    font-size: clamp(1rem, 2cqi, 1.3rem);
+  }
+}
+
 /* ---- LEVEL CLEAR / BOSS DEFEATED / VICTORY ---- */
 .clear .overlay-card,
 .victory .overlay-card {

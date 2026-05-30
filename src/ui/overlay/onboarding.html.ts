@@ -22,16 +22,25 @@ import type { Game } from '../../game';
 let rootEl: HTMLElement | null = null;
 let openedAtMs = 0;
 let isOpen = false;
+let dismissTimer: number | null = null;
 /** Previous frame's "playable PLAYING" check — true only when state is
  *  PLAYING AND the intro banner has cleared. Tracking the same predicate as
  *  the open condition is the whole point: a rising edge from false → true
  *  is what triggers the overlay. */
 let prevInPlay = false;
 
-const MAX_SHOW_MS = 7000;
+const MAX_SHOW_MS = 3200;
+
+function clearDismissTimer() {
+  if (dismissTimer !== null) {
+    window.clearTimeout(dismissTimer);
+    dismissTimer = null;
+  }
+}
 
 function dismiss() {
   if (!rootEl || !isOpen) return;
+  clearDismissTimer();
   isOpen = false;
   rootEl.classList.remove('is-open');
   if (!Storage.data.mobileOnboardingSeen) {
@@ -42,9 +51,11 @@ function dismiss() {
 
 function open() {
   if (!rootEl || isOpen) return;
+  clearDismissTimer();
   isOpen = true;
   openedAtMs = performance.now();
   rootEl.classList.add('is-open');
+  dismissTimer = window.setTimeout(() => dismiss(), MAX_SHOW_MS);
   AudioSys.menu();
 }
 
@@ -130,7 +141,7 @@ export function tickOnboardingOverlay(game: Game) {
   if (isOpen) {
     // Auto-dismiss on first horizontal-move input — the player has clearly
     // gotten the message. Touch handlers set keysPressed via the DOM controls.
-    if (keysPressed['ArrowLeft'] || keysPressed['ArrowRight']) {
+    if (keysPressed['ArrowLeft'] || keysPressed['ArrowRight'] || keysPressed['Space']) {
       dismiss();
       return;
     }

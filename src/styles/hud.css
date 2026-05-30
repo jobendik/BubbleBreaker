@@ -547,7 +547,7 @@
   color: var(--paper);
   /* Vertical centre of each chip is roughly at 70% height — comfortably in
      the lower half but above where a bottom-centre fire button would sit. */
-  --chip-y: 70%;
+  --chip-y: 64%;
 }
 @media not all and (hover: none) and (pointer: coarse) {
   .mobile-onboarding { display: none; }
@@ -562,7 +562,7 @@
 .mobile-onboarding__dim {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, 0.34);
 }
 
 /* Zone-area markers — centred inside each half of the stage. */
@@ -570,11 +570,11 @@
   position: absolute;
   top: var(--chip-y);
   transform: translateY(-50%);
-  width: 50%;
+  width: 42%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: clamp(6px, 1cqi, 10px);
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.55));
   animation: onboard-bounce 1.6s var(--ease-out) infinite;
 }
@@ -590,18 +590,19 @@
 }
 
 .mobile-onboarding__zone-icon {
-  width: 56px;
-  height: 56px;
+  width: clamp(32px, 4.4cqi, 44px);
+  height: clamp(32px, 4.4cqi, 44px);
+  opacity: 0.9;
 }
 
 .mobile-onboarding__chip {
   background: var(--ink);
   color: var(--paper);
-  padding: 7px 14px;
+  padding: 6px 10px;
   border-radius: var(--radius-pill);
   border: 2px solid currentColor;
-  font-size: clamp(11px, 1.5cqi, 13px);
-  letter-spacing: 0.18em;
+  font-size: clamp(9px, 1.1cqi, 12px);
+  letter-spacing: 0.14em;
   font-weight: 800;
   text-transform: uppercase;
   white-space: nowrap;
@@ -612,28 +613,28 @@
 .mobile-onboarding__hint {
   position: absolute;
   left: 50%;
-  top: clamp(12%, 14cqh, 20%);
+  top: clamp(10%, 11cqh, 16%);
   transform: translateX(-50%);
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 2.6cqi, 1.6rem);
+  font-size: clamp(0.85rem, 2cqi, 1.2rem);
   letter-spacing: 0.06em;
   text-shadow: 0 3px 0 var(--ink), 0 6px 18px rgba(0, 0, 0, 0.6);
   text-align: center;
-  max-width: 80cqi;
+  max-width: 66cqi;
   line-height: 1.2;
 }
 .mobile-onboarding__autofire {
   position: absolute;
   left: 50%;
-  top: calc(clamp(12%, 14cqh, 20%) + clamp(38px, 5cqh, 60px));
+  top: calc(clamp(10%, 11cqh, 16%) + clamp(30px, 4.2cqh, 42px));
   transform: translateX(-50%);
   font-family: var(--font-ui);
   font-weight: 700;
-  font-size: var(--fs-small);
-  letter-spacing: 0.06em;
+  font-size: clamp(0.64rem, 1.1cqi, 0.8rem);
+  letter-spacing: 0.04em;
   color: var(--brand-yellow);
   text-align: center;
-  max-width: 70cqi;
+  max-width: 60cqi;
   opacity: 0.95;
   text-shadow: 0 2px 0 var(--ink);
 }

@@ -355,12 +355,11 @@
   text-transform: uppercase;
 }
 
-/* ---- Touch controls — invisible movement zones + optional Fire button.
+/* ---- Touch controls — invisible movement zones.
    Movement is zone-based: the left half of the stage moves the player
    left, the right half moves the player right.  No arrow buttons are
    shown for movement — the whole stage is the control surface.
-   The Fire button appears only when the player turns auto-fire off; it
-   floats at the bottom-centre so either thumb can reach it comfortably.
+   Shooting is handled entirely by auto-fire.
 
    Z-index is one below --z-hud (= 19) so the HUD pause button (z=20)
    always sits on top and receives taps first, even though .touch-controls
@@ -372,9 +371,6 @@
   /* One step below .hud so the pause button always receives taps first. */
   z-index: calc(var(--z-hud) - 1);
   display: none;
-  --touch-fire-base: 102px;
-  --touch-fire-size: calc(var(--touch-fire-base) * var(--touch-scale, 1));
-  --touch-edge-y: clamp(10px, 2.4cqh, 22px);
 }
 @media (hover: none) and (pointer: coarse) {
   body[data-state="playing"] .touch-controls,
@@ -382,18 +378,11 @@
   body[data-state="player_dead"] .touch-controls {
     display: block;
   }
-  /* Zones and fire button become interactive only while the game is live. */
+  /* Zones become interactive only while the game is live. */
   body[data-state="playing"] .touch-zone,
   body[data-state="player_dead"] .touch-zone {
     pointer-events: auto;
   }
-  /* Dim the fire button during pause; zones are already pointer-events:none
-     outside playing/player_dead so no need to explicitly disable them. */
-  body[data-state="paused"] .touch-controls {
-    opacity: 0.25;
-    transition: opacity var(--dur-base) var(--ease-out);
-  }
-  body[data-state="paused"] .touch-btn { pointer-events: none; }
 }
 
 /* Half-screen movement zones — invisible, full height, each covering one
@@ -412,122 +401,6 @@
 }
 .touch-zone--left  { left:  0; }
 .touch-zone--right { right: 0; }
-
-/* Optional fire button — shown only when auto-fire is off.  Floats at the
-   bottom-centre so either thumb can reach it without stretching. */
-.touch-btn {
-  pointer-events: auto;
-  position: relative;
-  /* Size is driven entirely by the fire-button variables. */
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, rgba(10, 24, 50, 0.55), rgba(10, 24, 50, 0.72));
-  border: 2px solid color-mix(in srgb, var(--brand-cyan) 55%, transparent);
-  color: var(--paper);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: none;
-  font-family: var(--font-display);
-  font-size: clamp(11px, 1.4cqi, 13px);
-  letter-spacing: 0.16em;
-  transition:
-    transform 90ms var(--ease-out),
-    background-color 100ms,
-    border-color 100ms,
-    box-shadow 120ms var(--ease-out),
-    color 100ms;
-  backdrop-filter: blur(6px) saturate(140%);
-  -webkit-backdrop-filter: blur(6px) saturate(140%);
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.45);
-  --press-scale: 0.93;
-}
-.touch-btn:focus-visible {
-  outline: 3px solid var(--brand-cyan);
-  outline-offset: 3px;
-}
-.touch-btn.is-held {
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, color-mix(in srgb, var(--brand-yellow) 90%, white), var(--brand-yellow));
-  border-color: var(--ink);
-  color: var(--ink);
-  transform: scale(var(--press-scale));
-  box-shadow:
-    0 4px 0 var(--ink),
-    0 0 26px rgba(255, 214, 10, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
-}
-
-.touch-btn__icon {
-  width: 52%;
-  height: 52%;
-  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
-  transition: filter 100ms, transform 100ms;
-}
-.touch-btn.is-held .touch-btn__icon {
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
-  transform: translateY(1px);
-}
-.touch-btn__label {
-  position: absolute;
-  bottom: 9%;
-  left: 0; right: 0;
-  text-align: center;
-  font-size: clamp(10px, 1.3cqi, 12px);
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  pointer-events: none;
-  opacity: 0.85;
-}
-.touch-btn--fire {
-  position: absolute;
-  bottom: calc(var(--touch-edge-y) + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--touch-fire-size);
-  height: var(--touch-fire-size);
-  border-color: color-mix(in srgb, var(--brand-coral) 70%, transparent);
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, rgba(40, 14, 8, 0.55), rgba(10, 24, 50, 0.72));
-  color: var(--brand-yellow);
-}
-.touch-btn--fire .touch-btn__icon { width: 46%; height: 46%; }
-.touch-btn--fire.is-held {
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, color-mix(in srgb, var(--brand-coral) 92%, white), var(--brand-coral));
-  border-color: var(--ink);
-  color: var(--ink);
-  /* Cancel the centering translateX before adding the press scale so they
-     compose correctly. */
-  transform: translateX(-50%) scale(var(--press-scale));
-  box-shadow:
-    0 4px 0 var(--ink),
-    0 0 28px rgba(255, 127, 80, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
-}
-
-@media (min-aspect-ratio: 16/9) and (pointer: coarse) {
-  .touch-controls { --touch-fire-base: 110px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .touch-btn { transition: none; }
-  /* Fire button must keep its translateX(-50%) centering even with no press
-     animation; the non-fire movement zones have no transform to worry about. */
-  .touch-btn--fire.is-held { transform: translateX(-50%); }
-}
 
 /* ---- First-play touch onboarding overlay ----
    Translucent dim + two zone-area chips that show MOVE LEFT / MOVE RIGHT.

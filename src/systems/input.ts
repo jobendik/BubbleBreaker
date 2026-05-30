@@ -265,7 +265,6 @@ export function flushHoverSound() {
 export function tickAutoFire(game: Game) {
   const active =
     isTouchDevice &&
-    !!Storage.data.mobileAutoFire &&
     game.state === State.PLAYING &&
     !!game.player &&
     !game.player.dead &&

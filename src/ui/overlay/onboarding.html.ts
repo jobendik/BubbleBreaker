@@ -92,7 +92,7 @@ export function buildOnboardingOverlay(_game: Game): HTMLElement {
     </div>
 
     <div class="mobile-onboarding__hint">Pop every bubble.<br>Tap anywhere to start.</div>
-    <div class="mobile-onboarding__autofire" data-role="autofire-hint">Auto-fire ON · change in Pause</div>
+    <div class="mobile-onboarding__autofire" data-role="autofire-hint">Auto-fire ON</div>
   `;
 
   // Any tap inside the overlay dismisses it. The overlay sits above the
@@ -101,13 +101,6 @@ export function buildOnboardingOverlay(_game: Game): HTMLElement {
     e.preventDefault();
     dismiss();
   });
-
-  // Reflect the auto-fire setting in the hint text — players who turned it
-  // off elsewhere shouldn't see "ON" messaging.
-  if (!Storage.data.mobileAutoFire) {
-    const af = root.querySelector<HTMLElement>('[data-role="autofire-hint"]');
-    if (af) af.textContent = 'Hold Fire to shoot · change in Pause';
-  }
 
   rootEl = root;
   return root;

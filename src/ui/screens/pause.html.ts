@@ -6,7 +6,6 @@ import { State } from '../../constants';
 import { AudioSys } from '../../systems/audio';
 import { isTouchDevice } from '../../systems/input';
 import { Storage } from '../../systems/storage';
-import { applyTouchControlSettings } from '../hud/touchControls.html';
 import { activeMissions } from '../../systems/retention';
 import { computeAccountLevel } from '../../systems/progression';
 import type { Game } from '../../game';
@@ -47,18 +46,9 @@ export function buildPause(game: Game): HTMLElement {
 
     <div class="pause__mobile-settings" data-role="mobile-settings" hidden>
       <div class="pause__section-label">Mobile controls</div>
-      <div class="pause__toggle" data-role="autofire">
-        <span>Auto-fire</span>
-        <div class="pause__toggle-switch"></div>
-      </div>
       <div class="pause__toggle" data-role="haptics">
         <span>Vibration</span>
         <div class="pause__toggle-switch"></div>
-      </div>
-      <div class="pause__slider-row">
-        <label class="pause__slider-label">Fire button size</label>
-        <input class="pause__slider" type="range" min="80" max="125" step="5" data-role="scale-slider" aria-label="Fire button size" />
-        <span class="pause__slider-value" data-role="scale-value">100%</span>
       </div>
     </div>
 
@@ -96,26 +86,11 @@ export function buildPause(game: Game): HTMLElement {
   const mobileSettings = card.querySelector<HTMLElement>('[data-role="mobile-settings"]');
   if (isTouchDevice && mobileSettings) {
     mobileSettings.hidden = false;
-    card.querySelector<HTMLElement>('[data-role="autofire"]')!.addEventListener('click', () => {
-      AudioSys.menu();
-      Storage.data.mobileAutoFire = !Storage.data.mobileAutoFire;
-      Storage.save();
-      applyTouchControlSettings();
-    });
     card.querySelector<HTMLElement>('[data-role="haptics"]')!.addEventListener('click', () => {
       AudioSys.menu();
       Storage.data.mobileHaptics = !Storage.data.mobileHaptics;
       Storage.save();
     });
-    const scaleSlider = card.querySelector<HTMLInputElement>('[data-role="scale-slider"]');
-    if (scaleSlider) {
-      scaleSlider.addEventListener('input', () => {
-        const pct = parseInt(scaleSlider.value, 10);
-        Storage.data.mobileTouchScale = pct / 100;
-        Storage.save();
-        applyTouchControlSettings();
-      });
-    }
   }
 
   return root;
@@ -161,7 +136,7 @@ export function syncPause(game: Game, root: HTMLElement) {
     controls.dataset.populated = '1';
     controls.innerHTML = isTouchDevice
       ? `<div>Tap the <strong>left half</strong> of the screen to move left, <strong>right half</strong> to move right.</div>
-         <div>Shots fire automatically. Turn off Auto-fire below to use a manual Fire button.</div>
+         <div>Shots fire automatically.</div>
          <div>Tap the pause icon (top-right) to pause / resume.</div>`
       : `<div><strong>A / ←</strong> · <strong>D / →</strong>  Move</div>
          <div><strong>Space / W / ↑</strong>  Shoot</div>
@@ -175,14 +150,7 @@ export function syncPause(game: Game, root: HTMLElement) {
   if (mute) mute.classList.toggle('is-on', !AudioSys.muted);
 
   if (isTouchDevice) {
-    const af = root.querySelector<HTMLElement>('[data-role="autofire"]');
-    if (af) af.classList.toggle('is-on', !!Storage.data.mobileAutoFire);
     const hp = root.querySelector<HTMLElement>('[data-role="haptics"]');
     if (hp) hp.classList.toggle('is-on', !!Storage.data.mobileHaptics);
-    const slider = root.querySelector<HTMLInputElement>('[data-role="scale-slider"]');
-    const sval = root.querySelector<HTMLElement>('[data-role="scale-value"]');
-    const pct = Math.round((Storage.data.mobileTouchScale || 1) * 100);
-    if (slider && slider.value !== String(pct)) slider.value = String(pct);
-    if (sval && sval.textContent !== pct + '%') sval.textContent = pct + '%';
   }
 }

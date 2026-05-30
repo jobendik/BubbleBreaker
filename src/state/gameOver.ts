@@ -41,6 +41,12 @@ export function updatePlayerDead(game: Game, dt: number) {
       }
     } else {
       game.state = State.GAME_OVER;
+      // Mobile fix: clear transient canvas effects so shockwaves, smoke clouds,
+      // and floating texts don't persist visibly on the game-over screen.
+      game.particles    = [];
+      game.shockwaves   = [];
+      game.smokeClouds  = [];
+      game.floatingTexts = [];
     }
   }
   // Still tick particles for visual continuity during the freeze.

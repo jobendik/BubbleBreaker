@@ -537,6 +537,21 @@
   }
 }
 
+/* Mobile fix: on short landscape stages the absolutely-positioned profile
+   card overlaps the vertically-centred CTA stack even when the container
+   is wider than 760px (e.g. iPad landscape or a 800px-wide phone stage
+   that is only ~450px tall). Hide the card and tighten vertical spacing
+   once the container height drops to mobile-landscape territory. */
+@container (max-height: 500px) {
+  .menu .menu__profile { display: none; }
+  .menu .menu__brand   { display: none; }
+  .menu .menu__title-wrap { margin-bottom: clamp(4px, 1cqi, 10px); }
+  .menu .menu__cta-stack  { gap: clamp(5px, 1.1cqi, 10px); }
+  .menu .menu__play       { padding: clamp(9px, 1.8cqi, 16px) var(--pad-xl); }
+  .menu .menu__secondary  { margin-top: clamp(6px, 1.2cqi, 10px); }
+  .menu .menu__footer     { display: none; }
+}
+
 /* =====================================================================
    MODE SELECT
    ===================================================================== */
@@ -1173,7 +1188,27 @@
   }
 }
 
-/* ---- LEVEL CLEAR / BOSS DEFEATED / VICTORY ---- */
+/* Mobile fix: on a landscape phone the overlay card is too tall and clips
+   at the bottom. Use a height-based container query to reduce padding and
+   gap so the score + buttons stay fully visible without scrolling. */
+@container (max-height: 500px) {
+  .overlay-card {
+    padding: clamp(8px, 1.5cqi, 14px);
+    gap: clamp(4px, 0.8cqi, 8px);
+    max-height: calc(100cqh - 16px);
+    overflow-y: auto;
+  }
+  .overlay-card__title.ui-heading--display {
+    font-size: clamp(1.4rem, 4.2cqi, 2.4rem);
+    line-height: 0.9;
+  }
+  .overlay-card__sub { margin: -4px 0 0; }
+  .overlay-card__stats { margin: clamp(3px, 0.7cqi, 6px) 0; }
+  .gameover__tip,
+  .gameover__warning { display: none; }
+}
+
+
 .clear .overlay-card,
 .victory .overlay-card {
   border-color: rgba(6, 214, 160, 0.5);
